@@ -144,6 +144,117 @@
             font-style: italic;
             color: #666;
         }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtext {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .blog-result {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .blog-result.show {
+            display: block;
+        }
+
+        .blog-section {
+            margin-bottom: 20px;
+        }
+
+        .blog-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .copy-btn.copied {
+            background: #28a745;
+        }
+
+        .blog-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #333;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .new-topic-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .new-topic-btn:hover {
+            background: #218838;
+        }
     </style>
 </head>
 <body>
@@ -162,6 +273,32 @@
             <button type="submit" id="submitBtn">Generate Topic</button>
         </form>
         <div id="message" class="message"></div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Generating Your Blog...</div>
+            <div class="loading-subtext">This may take a few moments. Please wait.</div>
+        </div>
+
+        <div id="blogResult" class="blog-result">
+            <div class="blog-section">
+                <div class="blog-label">
+                    <span>Blog Title</span>
+                    <button class="copy-btn" onclick="copyToClipboard('blogTitle', this)">Copy</button>
+                </div>
+                <div id="blogTitle" class="blog-content"></div>
+            </div>
+
+            <div class="blog-section">
+                <div class="blog-label">
+                    <span>Blog Body</span>
+                    <button class="copy-btn" onclick="copyToClipboard('blogBody', this)">Copy</button>
+                </div>
+                <div id="blogBody" class="blog-content"></div>
+            </div>
+
+            <button class="new-topic-btn" onclick="resetForm()">Generate Another Blog Topic</button>
+        </div>
     </div>
 
     <script>
@@ -175,6 +312,10 @@
         const topicInput = document.getElementById('topic');
         const submitBtn = document.getElementById('submitBtn');
         const messageDiv = document.getElementById('message');
+        const loadingDiv = document.getElementById('loading');
+        const blogResultDiv = document.getElementById('blogResult');
+        const blogTitleDiv = document.getElementById('blogTitle');
+        const blogBodyDiv = document.getElementById('blogBody');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -191,8 +332,10 @@
                 return;
             }
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+            // Hide form and show loading
+            form.style.display = 'none';
+            messageDiv.classList.remove('show');
+            loadingDiv.classList.add('show');
 
             try {
                 // Prepare the payload
@@ -203,7 +346,7 @@
                     venue: 'Art and Space LA'
                 };
 
-                // Send to webhook
+                // Send to webhook and wait for response
                 const response = await fetch(WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
@@ -213,23 +356,78 @@
                 });
 
                 if (response.ok) {
-                    showMessage(
-                        'Topic submitted successfully!' +
-                        '<div class="submitted-topic">Topic: "' + topic + '"</div>',
-                        'success'
-                    );
-                    topicInput.value = '';
+                    const data = await response.json();
+
+                    // Hide loading
+                    loadingDiv.classList.remove('show');
+
+                    // Extract and display blog content
+                    displayBlog(data);
                 } else {
-                    showMessage('Failed to submit topic. Please try again.', 'error');
+                    throw new Error('Failed to generate blog');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showMessage('Network error. Please try again.', 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Generate Topic';
+                loadingDiv.classList.remove('show');
+                form.style.display = 'block';
+                showMessage('Failed to generate blog. Please try again.', 'error');
             }
         });
+
+        function displayBlog(data) {
+            // Extract title and body from the response
+            let title = data.title || data.blogTitle || 'Untitled';
+            let body = data.body || data.blogBody || data.content || '';
+
+            // If the data contains HTML, strip tags for display but keep formatting
+            title = stripHtmlTags(title);
+            body = stripHtmlTags(body);
+
+            // Display the content
+            blogTitleDiv.textContent = title;
+            blogBodyDiv.textContent = body;
+
+            // Show the blog result
+            blogResultDiv.classList.add('show');
+        }
+
+        function stripHtmlTags(html) {
+            // Create a temporary div to parse HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            // Get text content (this removes all HTML tags)
+            return temp.textContent || temp.innerText || '';
+        }
+
+        function copyToClipboard(elementId, button) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        function resetForm() {
+            // Hide blog result
+            blogResultDiv.classList.remove('show');
+
+            // Clear form
+            topicInput.value = '';
+
+            // Show form again
+            form.style.display = 'block';
+        }
 
         function showMessage(text, type) {
             messageDiv.innerHTML = text;
