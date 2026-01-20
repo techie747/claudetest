@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blog Topic Generator</title>
+    <title>Art and Space LA - Blog Topic Generator</title>
     <style>
         * {
             margin: 0;
@@ -148,14 +148,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>Blog Topic Generator</h1>
+        <h1>Art and Space LA<br><small style="font-size: 18px; color: #777;">Blog Topic Ideas</small></h1>
         <form id="topicForm">
             <div class="form-group">
-                <label for="topic">What blog topic would you like to generate?</label>
+                <label for="topic">What event or venue topic would you like us to write about?</label>
                 <textarea
                     id="topic"
                     name="topic"
-                    placeholder="e.g., The Future of AI in Healthcare, 10 Tips for Better Sleep, How to Start a Successful Podcast..."
+                    placeholder="e.g., How to Choose the Perfect Art Gallery for Your Corporate Event, 10 Creative Ways to Use Event Spaces in LA, Planning an Unforgettable Gallery Opening, The Ultimate Guide to Hosting Art Exhibitions..."
                     required
                 ></textarea>
             </div>
@@ -199,7 +199,8 @@
                 const payload = {
                     topic: topic,
                     timestamp: new Date().toISOString(),
-                    source: 'gohighlevel-funnel'
+                    source: 'art-and-space-la',
+                    venue: 'Art and Space LA'
                 };
 
                 // Send to webhook
