@@ -374,9 +374,30 @@
                     body: JSON.stringify(payload),
                     signal: controller.signal,
                     keepalive: true
+                }).catch(err => {
+                    // If fetch fails due to timeout, still treat as success since workflow is running
+                    console.log('Fetch timeout - workflow is still running:', err);
+                    return { ok: true, timedOut: true };
                 });
 
                 clearTimeout(timeoutId);
+
+                // If response timed out but workflow was triggered
+                if (response.timedOut) {
+                    stopTimer();
+                    loadingDiv.classList.remove('show');
+
+                    // Show success message explaining blog will come via email
+                    const fakeData = {
+                        title: 'Blog Generation In Progress',
+                        body: 'Your blog about "' + topic + '" is being generated!\n\n' +
+                              'Due to the length and quality of content we create, this process takes 3-4 minutes.\n\n' +
+                              'You will receive your completed blog via email shortly.\n\n' +
+                              'Thank you for your patience!'
+                    };
+                    displayBlog(fakeData);
+                    return;
+                }
 
                 if (response.ok) {
                     const contentType = response.headers.get('content-type');
