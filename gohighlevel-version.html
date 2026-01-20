@@ -361,17 +361,19 @@
                     venue: 'Art and Space LA'
                 };
 
-                // Send to webhook and wait for response (10 minute max timeout)
+                // Send to webhook with extended timeout and keep-alive
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
                 const response = await fetch(WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Connection': 'keep-alive'
                     },
                     body: JSON.stringify(payload),
-                    signal: controller.signal
+                    signal: controller.signal,
+                    keepalive: true
                 });
 
                 clearTimeout(timeoutId);
