@@ -189,60 +189,35 @@
             margin-top: 15px;
         }
 
-        .blog-result {
+        .success-message {
             margin-top: 30px;
             display: none;
+            text-align: center;
         }
 
-        .blog-result.show {
+        .success-message.show {
             display: block;
         }
 
-        .blog-section {
+        .success-content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            border: 2px solid #667eea;
             margin-bottom: 20px;
         }
 
-        .blog-label {
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 8px;
-            font-size: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .copy-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 5px 15px;
-            border-radius: 5px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .copy-btn:hover {
-            background: #5568d3;
-        }
-
-        .copy-btn.copied {
-            background: #28a745;
-        }
-
-        .blog-content {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+        .success-content p {
             color: #333;
-            max-height: 400px;
-            overflow-y: auto;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .success-content .email-highlight {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 18px;
         }
 
         .new-topic-btn {
@@ -298,23 +273,10 @@
             <div class="timer" id="timer">Elapsed time: 0:00</div>
         </div>
 
-        <div id="blogResult" class="blog-result">
-            <div class="blog-section">
-                <div class="blog-label">
-                    <span>Blog Title</span>
-                    <button class="copy-btn" onclick="copyToClipboard('blogTitle', this)">Copy</button>
-                </div>
-                <div id="blogTitle" class="blog-content"></div>
+        <div id="successMessage" class="success-message">
+            <div class="success-content">
+                <p id="successText"></p>
             </div>
-
-            <div class="blog-section">
-                <div class="blog-label">
-                    <span>Blog Body</span>
-                    <button class="copy-btn" onclick="copyToClipboard('blogBody', this)">Copy</button>
-                </div>
-                <div id="blogBody" class="blog-content"></div>
-            </div>
-
             <button class="new-topic-btn" onclick="resetForm()">Generate Another Blog Topic</button>
         </div>
     </div>
@@ -332,9 +294,8 @@
         const submitBtn = document.getElementById('submitBtn');
         const messageDiv = document.getElementById('message');
         const loadingDiv = document.getElementById('loading');
-        const blogResultDiv = document.getElementById('blogResult');
-        const blogTitleDiv = document.getElementById('blogTitle');
-        const blogBodyDiv = document.getElementById('blogBody');
+        const successMessageDiv = document.getElementById('successMessage');
+        const successTextDiv = document.getElementById('successText');
         const timerDiv = document.getElementById('timer');
 
         let timerInterval = null;
@@ -395,14 +356,17 @@
                 stopTimer();
                 loadingDiv.classList.remove('show');
 
-                const successData = {
-                    title: 'Thank You!',
-                    body: 'Your blog about "' + topic + '" is being generated!\n\n' +
-                          'This process takes approximately 3-4 minutes to ensure high-quality content.\n\n' +
-                          'You will receive your completed blog at:\n' + email + '\n\n' +
-                          'Thank you for your patience!'
-                };
-                displayBlog(successData);
+                // Create success message HTML
+                const successHTML = `
+                    Your blog about "<strong>${topic}</strong>" is being generated!<br><br>
+                    This process takes approximately 3-4 minutes to ensure high-quality content.<br><br>
+                    You will receive your completed blog at:<br>
+                    <span class="email-highlight">${email}</span><br><br>
+                    Thank you for your patience!
+                `;
+
+                successTextDiv.innerHTML = successHTML;
+                successMessageDiv.classList.add('show');
             } catch (error) {
                 console.error('Error:', error);
                 stopTimer();
@@ -412,53 +376,9 @@
             }
         });
 
-        function displayBlog(data) {
-            // Extract title and body from the response
-            let title = data.title || data.blogTitle || 'Untitled';
-            let body = data.body || data.blogBody || data.content || '';
-
-            // If the data contains HTML, strip tags for display but keep formatting
-            title = stripHtmlTags(title);
-            body = stripHtmlTags(body);
-
-            // Display the content
-            blogTitleDiv.textContent = title;
-            blogBodyDiv.textContent = body;
-
-            // Show the blog result
-            blogResultDiv.classList.add('show');
-        }
-
-        function stripHtmlTags(html) {
-            // Create a temporary div to parse HTML
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            // Get text content (this removes all HTML tags)
-            return temp.textContent || temp.innerText || '';
-        }
-
-        function copyToClipboard(elementId, button) {
-            const element = document.getElementById(elementId);
-            const text = element.textContent;
-
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.classList.add('copied');
-
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy to clipboard');
-            });
-        }
-
         function resetForm() {
-            // Hide blog result
-            blogResultDiv.classList.remove('show');
+            // Hide success message
+            successMessageDiv.classList.remove('show');
 
             // Clear form
             topicInput.value = '';
