@@ -277,6 +277,16 @@
                     required
                 ></textarea>
             </div>
+            <div class="form-group">
+                <label for="email">Email Address (to receive your blog)</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="your@email.com"
+                    required
+                >
+            </div>
             <button type="submit" id="submitBtn">Generate Topic</button>
         </form>
         <div id="message" class="message"></div>
@@ -318,6 +328,7 @@
 
         const form = document.getElementById('topicForm');
         const topicInput = document.getElementById('topic');
+        const emailInput = document.getElementById('email');
         const submitBtn = document.getElementById('submitBtn');
         const messageDiv = document.getElementById('message');
         const loadingDiv = document.getElementById('loading');
@@ -333,8 +344,15 @@
             e.preventDefault();
 
             const topic = topicInput.value.trim();
+            const email = emailInput.value.trim();
+
             if (!topic) {
                 showMessage('Please enter a blog topic', 'error');
+                return;
+            }
+
+            if (!email) {
+                showMessage('Please enter your email address', 'error');
                 return;
             }
 
@@ -356,6 +374,7 @@
                 // Prepare the payload
                 const payload = {
                     topic: topic,
+                    email: email,
                     timestamp: new Date().toISOString(),
                     source: 'art-and-space-la',
                     venue: 'Art and Space LA'
@@ -392,7 +411,7 @@
                         title: 'Blog Generation In Progress',
                         body: 'Your blog about "' + topic + '" is being generated!\n\n' +
                               'Due to the length and quality of content we create, this process takes 3-4 minutes.\n\n' +
-                              'You will receive your completed blog via email shortly.\n\n' +
+                              'You will receive your completed blog at ' + email + ' shortly.\n\n' +
                               'Thank you for your patience!'
                     };
                     displayBlog(fakeData);
@@ -481,6 +500,7 @@
 
             // Clear form
             topicInput.value = '';
+            emailInput.value = '';
 
             // Show form again
             form.style.display = 'block';
