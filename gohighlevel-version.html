@@ -380,73 +380,35 @@
                     venue: 'Art and Space LA'
                 };
 
-                // Send to webhook with extended timeout and keep-alive
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
-
-                const response = await fetch(WEBHOOK_URL, {
+                // Send to webhook (don't wait for response)
+                fetch(WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Connection': 'keep-alive'
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal,
-                    keepalive: true
+                    body: JSON.stringify(payload)
                 }).catch(err => {
-                    // If fetch fails due to timeout, still treat as success since workflow is running
-                    console.log('Fetch timeout - workflow is still running:', err);
-                    return { ok: true, timedOut: true };
+                    console.log('Webhook triggered:', err);
                 });
 
-                clearTimeout(timeoutId);
+                // Immediately show success message
+                stopTimer();
+                loadingDiv.classList.remove('show');
 
-                // If response timed out but workflow was triggered
-                if (response.timedOut) {
-                    stopTimer();
-                    loadingDiv.classList.remove('show');
-
-                    // Show success message explaining blog will come via email
-                    const fakeData = {
-                        title: 'Blog Generation In Progress',
-                        body: 'Your blog about "' + topic + '" is being generated!\n\n' +
-                              'Due to the length and quality of content we create, this process takes 3-4 minutes.\n\n' +
-                              'You will receive your completed blog at ' + email + ' shortly.\n\n' +
-                              'Thank you for your patience!'
-                    };
-                    displayBlog(fakeData);
-                    return;
-                }
-
-                if (response.ok) {
-                    const contentType = response.headers.get('content-type');
-                    let data;
-
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        console.log('Response text:', text);
-                        data = { body: text, title: 'Generated Blog' };
-                    }
-
-                    // Hide loading and stop timer
-                    stopTimer();
-                    loadingDiv.classList.remove('show');
-
-                    // Extract and display blog content
-                    displayBlog(data);
-                } else {
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                    throw new Error('Failed to generate blog: ' + response.status);
-                }
+                const successData = {
+                    title: 'Thank You!',
+                    body: 'Your blog about "' + topic + '" is being generated!\n\n' +
+                          'This process takes approximately 3-4 minutes to ensure high-quality content.\n\n' +
+                          'You will receive your completed blog at:\n' + email + '\n\n' +
+                          'Thank you for your patience!'
+                };
+                displayBlog(successData);
             } catch (error) {
                 console.error('Error:', error);
                 stopTimer();
                 loadingDiv.classList.remove('show');
                 form.style.display = 'block';
-                showMessage('Failed to generate blog: ' + error.message + '<br>Check browser console for details.', 'error');
+                showMessage('Failed to submit request. Please try again.', 'error');
             }
         });
 
