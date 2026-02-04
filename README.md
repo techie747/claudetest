@@ -109,6 +109,68 @@ The app consists of:
 - All submitted topics are logged to the server console
 - The app includes error handling for webhook failures
 
+---
+
+## HostOS Calendar Sync AI Assistant
+
+An AI-powered assistant for synchronizing calendars across Airbnb, Vrbo, and Booking.com platforms using Google AI Studio (Gemini API).
+
+### Features
+
+- Specialized AI assistant for calendar sync integration
+- Guides users through OAuth flows for each platform
+- Prevents double-bookings across platforms
+- Includes technical backend implementation details
+
+### Python Setup
+
+1. Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Configure your Google AI API key:
+
+```bash
+# Add to your .env file
+GOOGLE_AI_API_KEY=your_api_key_here
+```
+
+Get your API key at: https://aistudio.google.com/apikey
+
+### Usage
+
+#### Interactive CLI
+
+```bash
+python hostos_calendar_sync.py
+```
+
+#### As a Python Module
+
+```python
+from hostos_calendar_sync import HostOSCalendarSyncAssistant
+
+assistant = HostOSCalendarSyncAssistant()
+response = assistant.chat("How do I connect my Airbnb account?")
+print(response)
+```
+
+#### Export Config for Google AI Studio Web
+
+```bash
+python hostos_calendar_sync.py --config
+```
+
+This prints the system instruction and settings for use in the Google AI Studio web interface.
+
+### Files
+
+- `hostos_calendar_sync.py` - Main Python module with Gemini API integration
+- `hostos_system_instruction.py` - System instruction defining the AI assistant's behavior
+- `requirements.txt` - Python dependencies
+
 ## License
 
 MIT
