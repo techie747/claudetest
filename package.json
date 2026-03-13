@@ -1,18 +1,23 @@
 {
-  "name": "blog-topic-webhook-app",
-  "version": "1.0.0",
-  "description": "A simple app to capture blog topics and send them to a webhook",
+  "name": "frequency-intelligence-engine",
+  "version": "2.0.0",
+  "description": "Frequency Intelligence Engine with Human Design calculation pipeline",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["blog", "webhook", "topic"],
+  "keywords": ["human-design", "frequency", "intelligence", "webhook", "astrology", "bodygraph"],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "axios": "^1.6.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "luxon": "^3.4.4"
+  },
+  "optionalDependencies": {
+    "geo-tz": "^8.0.2",
+    "swisseph": "^0.5.3"
   }
 }

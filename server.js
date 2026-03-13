@@ -3,12 +3,18 @@ const express = require('express');
 const axios = require('axios');
 const path = require('path');
 
+// Human Design calculation engine routes
+const humanDesignRoutes = require('./src/routes/human-design');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// ─── Frequency Intelligence Engine: Human Design API ─────────────────────────
+app.use('/api/human-design', humanDesignRoutes);
 
 app.post('/api/submit-topic', async (req, res) => {
   const { topic } = req.body;
@@ -61,6 +67,7 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Blog Topic Webhook App running on http://localhost:${PORT}`);
+  console.log(`Frequency Intelligence Engine running on http://localhost:${PORT}`);
   console.log(`Webhook URL: ${process.env.WEBHOOK_URL || 'Not configured'}`);
+  console.log(`Human Design API: http://localhost:${PORT}/api/human-design/chart`);
 });
