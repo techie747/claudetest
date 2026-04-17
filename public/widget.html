@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frequency Intelligence Engine</title>
+  <style>
+    :root {
+      --bg:        #0a0a14;
+      --surface:   #12121f;
+      --border:    #2a2a4a;
+      --accent:    #7c3aed;
+      --accent2:   #06b6d4;
+      --gold:      #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --success:   #10b981;
+      --error:     #ef4444;
+      --radius:    12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Visualizer ─────────────────────────────────────── */
+    .visualizer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      height: 40px;
+      padding: 0 12px;
+    }
+    .bar {
+      width: 4px;
+      border-radius: 2px;
+      background: linear-gradient(to top, var(--accent), var(--accent2));
+      animation: pulse 1.2s ease-in-out infinite;
+      min-height: 4px;
+    }
+    .bar:nth-child(odd)  { animation-delay: calc(var(--i) * 0.07s); }
+    .bar:nth-child(even) { animation-delay: calc(var(--i) * 0.11s); }
+    @keyframes pulse {
+      0%, 100% { height: 4px; opacity: 0.4; }
+      50%       { height: 28px; opacity: 1; }
+    }
+    .visualizer.idle .bar { animation-play-state: paused; height: 4px; opacity: 0.3; }
+    .visualizer.playing .bar { animation-play-state: running; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #0f0f23 0%, #1a0a2e 50%, #0a1628 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      color: var(--text);
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .logo-text span { color: var(--accent2); }
+
+    .credits-badge {
+      font-size: 11px;
+      color: var(--gold);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    /* ── API Key Banner ─────────────────────────────────── */
+    .key-banner {
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid rgba(124, 58, 237, 0.35);
+      border-radius: var(--radius);
+      margin: 16px;
+      padding: 12px 16px;
+      display: none;
+    }
+    .key-banner.visible { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .key-banner label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+    .key-banner input {
+      flex: 1;
+      min-width: 160px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 10px;
+      font-family: monospace;
+    }
+    .key-banner button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ── Tabs ───────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      padding: 12px 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      transition: all 0.15s;
+      background: transparent;
+      letter-spacing: 0.3px;
+    }
+    .tab.active {
+      color: var(--text);
+      background: var(--surface);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+      margin-bottom: -1px;
+    }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Panel ──────────────────────────────────────────── */
+    .panel {
+      display: none;
+      padding: 16px;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .panel.active { display: flex; }
+
+    /* ── Form elements ──────────────────────────────────── */
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    textarea, input[type="text"], select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 10px 14px;
+      resize: vertical;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    textarea:focus, input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+    select option { background: #1a1a2e; }
+
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; min-width: 0; }
+
+    /* ── Toggles ────────────────────────────────────────── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+    }
+    .toggle-label { font-size: 13px; color: var(--text); }
+    .toggle-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    /* ── Model selector ─────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .model-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .model-card:hover { border-color: var(--accent); }
+    .model-card.selected { border-color: var(--accent); background: rgba(124,58,237,0.12); }
+    .model-card .mname { font-size: 11px; font-weight: 700; color: var(--text); }
+    .model-card .mbadge { font-size: 9px; color: var(--gold); margin-top: 2px; }
+
+    /* ── Generate button ────────────────────────────────── */
+    .btn-generate {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-generate:hover { opacity: 0.9; }
+    .btn-generate:active { transform: scale(0.99); }
+    .btn-generate:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-generate .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    .btn-generate.loading span { display: none; }
+    .btn-generate.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status / progress ──────────────────────────────── */
+    .status-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(6,182,212,0.08);
+      border: 1px solid rgba(6,182,212,0.25);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--accent2);
+    }
+    .status-bar.visible { display: flex; }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent2);
+      flex-shrink: 0;
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+    /* ── Results ────────────────────────────────────────── */
+    .results { display: flex; flex-direction: column; gap: 10px; }
+
+    .clip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } }
+
+    .clip-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+    }
+    .clip-art {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .clip-art img { width: 100%; height: 100%; object-fit: cover; }
+    .clip-info { flex: 1; min-width: 0; }
+    .clip-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .clip-tags  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .clip-controls {
+      padding: 0 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .clip-controls audio {
+      width: 100%;
+      height: 32px;
+      accent-color: var(--accent);
+    }
+    .clip-actions { display: flex; gap: 8px; }
+    .btn-sm {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .btn-sm:hover { color: var(--text); border-color: var(--accent); background: rgba(124,58,237,0.1); }
+    .btn-sm.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-sm.primary:hover { background: #6d28d9; }
+
+    /* ── History panel ──────────────────────────────────── */
+    .history-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Message toast ──────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 999;
+      animation: slideUp 0.2s ease;
+      max-width: 260px;
+    }
+    .toast.success { background: var(--success); color: #fff; }
+    .toast.error   { background: var(--error);   color: #fff; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(12px); } }
+
+    /* ── Frequency prompt helper ────────────────────────── */
+    .freq-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .freq-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface);
+    }
+    .freq-chip:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,158,11,0.08); }
+    .freq-chip.active { border-color: var(--gold); color: var(--gold); background: rgba(245,158,11,0.15); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎵</div>
+    <div>
+      <div>Frequency <span>Intelligence</span></div>
+      <div style="font-size:9px;font-weight:400;color:var(--muted);letter-spacing:1px;">ENGINE</div>
+    </div>
+  </div>
+  <div class="visualizer idle" id="visualizer">
+    <div class="bar" style="--i:1"></div>
+    <div class="bar" style="--i:2"></div>
+    <div class="bar" style="--i:3"></div>
+    <div class="bar" style="--i:4"></div>
+    <div class="bar" style="--i:5"></div>
+    <div class="bar" style="--i:6"></div>
+    <div class="bar" style="--i:7"></div>
+    <div class="bar" style="--i:8"></div>
+    <div class="bar" style="--i:9"></div>
+  </div>
+  <div class="credits-badge" id="creditsBtn" title="Click to refresh credits">✦ -- credits</div>
+</header>
+
+<!-- API Key input (shown when no server key configured) -->
+<div class="key-banner" id="keyBanner">
+  <label>Your Suno API Key</label>
+  <input type="password" id="apiKeyInput" placeholder="suno-..." autocomplete="off" />
+  <button onclick="saveKey()">Save</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('generate')">Generate</div>
+  <div class="tab"        onclick="switchTab('custom')">Custom</div>
+  <div class="tab"        onclick="switchTab('history')">History</div>
+</div>
+
+<!-- ── GENERATE TAB ─────────────────────────────────────── -->
+<div class="panel active" id="tab-generate">
+
+  <div>
+    <label>Frequency Prompt</label>
+    <textarea id="gen-prompt" rows="3"
+      placeholder="e.g. Healing ambient music tuned to 432 Hz with soft piano and nature sounds, deep relaxation, binaural undertones"></textarea>
+  </div>
+
+  <div>
+    <label>Frequency Enhancers</label>
+    <div class="freq-chips" id="freqChips">
+      <div class="freq-chip" data-append="432 Hz tuning">432 Hz</div>
+      <div class="freq-chip" data-append="528 Hz DNA repair frequency">528 Hz</div>
+      <div class="freq-chip" data-append="396 Hz liberating guilt and fear">396 Hz</div>
+      <div class="freq-chip" data-append="639 Hz heart chakra harmonics">639 Hz</div>
+      <div class="freq-chip" data-append="741 Hz awakening intuition">741 Hz</div>
+      <div class="freq-chip" data-append="852 Hz returning to spiritual order">852 Hz</div>
+      <div class="freq-chip" data-append="binaural beats">Binaural</div>
+      <div class="freq-chip" data-append="solfeggio frequencies">Solfeggio</div>
+      <div class="freq-chip" data-append="high vibration energy">High Vibe</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Style / Genre</label>
+      <input type="text" id="gen-tags" placeholder="ambient, healing, meditation" />
+    </div>
+    <div>
+      <label>Title (optional)</label>
+      <input type="text" id="gen-title" placeholder="Healing Waves" />
+    </div>
+  </div>
+
+  <div>
+    <label>Model</label>
+    <div class="model-grid" id="modelGrid">
+      <div class="model-card selected" data-model="chirp-v3-5">
+        <div class="mname">Chirp v3.5</div>
+        <div class="mbadge">RECOMMENDED</div>
+      </div>
+      <div class="model-card" data-model="chirp-v3-0">
+        <div class="mname">Chirp v3</div>
+        <div class="mbadge">STANDARD</div>
+      </div>
+      <div class="model-card" data-model="chirp-v2-xxl-alpha">
+        <div class="mname">Chirp v2</div>
+        <div class="mbadge">CLASSIC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Instrumental Only</div>
+      <div class="toggle-sub">Generate music without vocals</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="gen-instrumental" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="status-bar" id="gen-status">
+    <div class="pulse-dot"></div>
+    <span id="gen-status-text">Generating your frequency music...</span>
+  </div>
+
+  <button class="btn-generate" id="gen-btn" onclick="generate()">
+    <span>✦ Generate Frequency Music</span>
+    <div class="spinner"></div>
+  </button>
+
+  <div class="results" id="gen-results"></div>
+</div>
+
+<!-- ── CUSTOM TAB ──────────────────────────────────────── -->
+<div class="panel" id="tab-custom">
+
+  <div>
+    <label>Style Description</label>
+    <textarea id="cust-prompt" rows="2"
+      placeholder="e.g. Soulful R&B with 528 Hz tuning, warm bass, cosmic harmonics"></textarea>
+  </div>
+
+  <div>
+    <label>Lyrics</label>
+    <textarea id="cust-lyrics" rows="5"
+      placeholder="Write your lyrics here, or leave blank for AI-generated lyrics..."></textarea>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Title</label>
+      <input type="text" id="cust-title" placeholder="Song title" />
+    </div>
+    <div>
+      <label>Tags</label>
+      <input type="text" id="cust-tags" placeholder="soul, 528hz, cosmic" />
+    </div>
+  </div>
+
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Instrumental Only</div>
+      <div class="toggle-sub">Ignore lyrics, generate pure music</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="cust-instrumental" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="status-bar" id="cust-status">
+    <div class="pulse-dot"></div>
+    <span id="cust-status-text">Creating your custom frequency track...</span>
+  </div>
+
+  <button class="btn-generate" id="cust-btn" onclick="generateCustom()">
+    <span>✦ Create Custom Track</span>
+    <div class="spinner"></div>
+  </button>
+
+  <div class="results" id="cust-results"></div>
+</div>
+
+<!-- ── HISTORY TAB ─────────────────────────────────────── -->
+<div class="panel" id="tab-history">
+  <div class="history-empty" id="history-empty">
+    <div style="font-size:28px;margin-bottom:8px;">🎵</div>
+    Your generated tracks will appear here.
+  </div>
+  <div class="results" id="history-results"></div>
+</div>
+
+<script>
+  // ── Config ─────────────────────────────────────────────
+  const API_BASE = '';  // same origin — backend proxies Suno
+  let userApiKey = localStorage.getItem('fie_suno_key') || '';
+  let selectedModel = 'chirp-v3-5';
+  let history = JSON.parse(localStorage.getItem('fie_history') || '[]');
+  let pollTimers = {};
+
+  // ── Init ───────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    checkKeyBanner();
+    loadHistory();
+    loadCredits();
+    bindFreqChips();
+    bindModelCards();
+  });
+
+  function checkKeyBanner() {
+    // Show key banner only if no server key configured
+    // (server will 400 with specific message if missing)
+    if (userApiKey) return; // already saved
+    // We show it proactively so users can optionally override
+  }
+
+  function saveKey() {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if (!val) return;
+    userApiKey = val;
+    localStorage.setItem('fie_suno_key', val);
+    document.getElementById('keyBanner').classList.remove('visible');
+    toast('API key saved locally', 'success');
+    loadCredits();
+  }
+
+  function bindFreqChips() {
+    document.querySelectorAll('.freq-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        updatePromptFromChips();
+      });
+    });
+  }
+
+  function updatePromptFromChips() {
+    const active = [...document.querySelectorAll('.freq-chip.active')]
+      .map(c => c.dataset.append);
+    const base = document.getElementById('gen-prompt').value.replace(/,?\s*(432 Hz tuning|528 Hz DNA repair frequency|396 Hz liberating guilt and fear|639 Hz heart chakra harmonics|741 Hz awakening intuition|852 Hz returning to spiritual order|binaural beats|solfeggio frequencies|high vibration energy)/gi, '').trim();
+    if (active.length) {
+      document.getElementById('gen-prompt').value = base + (base ? ', ' : '') + active.join(', ');
+    } else {
+      document.getElementById('gen-prompt').value = base;
+    }
+  }
+
+  function bindModelCards() {
+    document.querySelectorAll('.model-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedModel = card.dataset.model;
+      });
+    });
+  }
+
+  // ── Tab switching ──────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['generate','custom','history'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  // ── API helpers ────────────────────────────────────────
+  function apiHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (userApiKey) h['X-Suno-Key'] = userApiKey;
+    return h;
+  }
+
+  async function apiFetch(url, opts = {}) {
+    opts.headers = { ...apiHeaders(), ...(opts.headers || {}) };
+    const res = await fetch(API_BASE + url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  // ── Credits ────────────────────────────────────────────
+  async function loadCredits() {
+    try {
+      const data = await apiFetch('/api/suno/credits');
+      const credits = data.total_credits_left ?? data.credits_left ?? data.remaining ?? '?';
+      document.getElementById('creditsBtn').textContent = `✦ ${credits} credits`;
+    } catch (e) {
+      document.getElementById('creditsBtn').textContent = '✦ -- credits';
+      if (e.message.includes('No Suno API key')) {
+        document.getElementById('keyBanner').classList.add('visible');
+      }
+    }
+  }
+  document.getElementById('creditsBtn').addEventListener('click', loadCredits);
+
+  // ── Generate ───────────────────────────────────────────
+  async function generate() {
+    const prompt = document.getElementById('gen-prompt').value.trim();
+    if (!prompt) return toast('Enter a frequency prompt first', 'error');
+
+    setLoading('gen', true);
+    showStatus('gen', 'Sending your frequency prompt to Suno...');
+
+    try {
+      const data = await apiFetch('/api/suno/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt,
+          title: document.getElementById('gen-title').value.trim() || undefined,
+          tags:  document.getElementById('gen-tags').value.trim() || undefined,
+          make_instrumental: document.getElementById('gen-instrumental').checked,
+          model: selectedModel
+        })
+      });
+
+      const clips = data.clips || data || [];
+      if (!clips.length) throw new Error('No clips returned from API');
+
+      showStatus('gen', `Generating ${clips.length} track(s) — polling for audio...`);
+      pollClips(clips.map(c => c.id), 'gen');
+    } catch (err) {
+      toast(err.message, 'error');
+      hideStatus('gen');
+      setLoading('gen', false);
+      if (err.message.includes('API key')) {
+        document.getElementById('keyBanner').classList.add('visible');
+      }
+    }
+  }
+
+  async function generateCustom() {
+    const prompt = document.getElementById('cust-prompt').value.trim();
+    const lyrics = document.getElementById('cust-lyrics').value.trim();
+    if (!prompt && !lyrics) return toast('Enter a style description or lyrics', 'error');
+
+    setLoading('cust', true);
+    showStatus('cust', 'Sending your custom track to Suno...');
+
+    try {
+      const data = await apiFetch('/api/suno/generate/custom', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt,
+          lyrics,
+          title: document.getElementById('cust-title').value.trim() || undefined,
+          tags:  document.getElementById('cust-tags').value.trim() || undefined,
+          make_instrumental: document.getElementById('cust-instrumental').checked
+        })
+      });
+
+      const clips = data.clips || data || [];
+      if (!clips.length) throw new Error('No clips returned from API');
+
+      showStatus('cust', `Generating ${clips.length} track(s) — polling for audio...`);
+      pollClips(clips.map(c => c.id), 'cust');
+    } catch (err) {
+      toast(err.message, 'error');
+      hideStatus('cust');
+      setLoading('cust', false);
+    }
+  }
+
+  // ── Polling ────────────────────────────────────────────
+  function pollClips(ids, tab, attempt = 0) {
+    const MAX = 60; // 5 minutes at 5s intervals
+    if (attempt > MAX) {
+      hideStatus(tab);
+      setLoading(tab, false);
+      toast('Generation timed out — check History later', 'error');
+      return;
+    }
+
+    const key = ids.join(',');
+    clearTimeout(pollTimers[key]);
+
+    pollTimers[key] = setTimeout(async () => {
+      try {
+        const clips = await apiFetch(`/api/suno/status?ids=${encodeURIComponent(ids.join(','))}`);
+        const ready = clips.filter(c => c.status === 'complete' || c.audio_url);
+        const pending = clips.filter(c => c.status !== 'complete' && !c.audio_url);
+
+        ready.forEach(clip => renderClip(clip, tab));
+
+        if (pending.length) {
+          showStatus(tab, `Still generating ${pending.length} track(s)...`);
+          pollClips(pending.map(c => c.id), tab, attempt + 1);
+        } else {
+          hideStatus(tab);
+          setLoading(tab, false);
+          setVisualizer('playing');
+          setTimeout(() => setVisualizer('idle'), 8000);
+          loadCredits();
+        }
+      } catch (err) {
+        pollClips(ids, tab, attempt + 1);
+      }
+    }, 5000);
+  }
+
+  // ── Rendering ──────────────────────────────────────────
+  function renderClip(clip, tab) {
+    // Avoid duplicates
+    if (document.getElementById('clip-' + clip.id)) return;
+
+    // Save to history
+    const entry = { ...clip, generatedAt: new Date().toISOString() };
+    history.unshift(entry);
+    if (history.length > 50) history.pop();
+    localStorage.setItem('fie_history', JSON.stringify(history));
+    loadHistory();
+
+    const card = createClipCard(clip);
+    const container = document.getElementById(tab + '-results');
+    container.prepend(card);
+  }
+
+  function createClipCard(clip) {
+    const card = document.createElement('div');
+    card.className = 'clip-card';
+    card.id = 'clip-' + clip.id;
+
+    const hasArt = clip.image_url;
+    const artContent = hasArt
+      ? `<img src="${escapeHtml(clip.image_url)}" alt="cover" />`
+      : '🎵';
+
+    const hasAudio = clip.audio_url;
+    const audioEl = hasAudio
+      ? `<audio controls src="${escapeHtml(clip.audio_url)}"></audio>`
+      : `<div style="font-size:11px;color:var(--muted);padding:4px 0;">Audio processing...</div>`;
+
+    const tags = clip.metadata?.tags || clip.tags || '';
+
+    card.innerHTML = `
+      <div class="clip-header">
+        <div class="clip-art">${artContent}</div>
+        <div class="clip-info">
+          <div class="clip-title">${escapeHtml(clip.title || 'Frequency Track')}</div>
+          <div class="clip-tags">${escapeHtml(tags)}</div>
+        </div>
+      </div>
+      <div class="clip-controls">
+        ${audioEl}
+        <div class="clip-actions">
+          ${hasAudio ? `<a class="btn-sm primary" href="${escapeHtml(clip.audio_url)}" download target="_blank">↓ Download</a>` : ''}
+          <button class="btn-sm" onclick="extendClip('${escapeHtml(clip.id)}')">↻ Extend</button>
+          <button class="btn-sm" onclick="copyId('${escapeHtml(clip.id)}')">⊞ Copy ID</button>
+        </div>
+      </div>`;
+
+    return card;
+  }
+
+  function loadHistory() {
+    const container = document.getElementById('history-results');
+    const empty = document.getElementById('history-empty');
+    container.innerHTML = '';
+    if (!history.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    history.forEach(clip => container.appendChild(createClipCard(clip)));
+  }
+
+  // ── Extend ─────────────────────────────────────────────
+  async function extendClip(clipId) {
+    try {
+      const data = await apiFetch('/api/suno/extend', {
+        method: 'POST',
+        body: JSON.stringify({ clip_id: clipId })
+      });
+      const clips = data.clips || data || [];
+      if (clips.length) {
+        switchTab('generate');
+        showStatus('gen', 'Extending track...');
+        pollClips(clips.map(c => c.id), 'gen');
+        setLoading('gen', true);
+      }
+    } catch (err) {
+      toast('Extend failed: ' + err.message, 'error');
+    }
+  }
+
+  // ── UI helpers ─────────────────────────────────────────
+  function setLoading(tab, on) {
+    const btn = document.getElementById(tab + '-btn');
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  function showStatus(tab, msg) {
+    const bar = document.getElementById(tab + '-status');
+    document.getElementById(tab + '-status-text').textContent = msg;
+    bar.classList.add('visible');
+  }
+
+  function hideStatus(tab) {
+    document.getElementById(tab + '-status').classList.remove('visible');
+  }
+
+  function setVisualizer(state) {
+    const v = document.getElementById('visualizer');
+    v.className = 'visualizer ' + state;
+  }
+
+  function copyId(id) {
+    navigator.clipboard.writeText(id).then(() => toast('Clip ID copied', 'success'));
+  }
+
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+</body>
+</html>

@@ -1,13 +1,13 @@
 {
-  "name": "blog-topic-webhook-app",
-  "version": "1.0.0",
-  "description": "A simple app to capture blog topics and send them to a webhook",
+  "name": "frequency-intelligence-engine",
+  "version": "2.0.0",
+  "description": "Frequency Intelligence Engine — AI music generation widget powered by Suno API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["blog", "webhook", "topic"],
+  "keywords": ["suno", "music", "ai", "frequency", "widget", "embed"],
   "author": "",
   "license": "MIT",
   "dependencies": {

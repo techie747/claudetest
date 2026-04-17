@@ -1,217 +1,505 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blog Topic Generator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frequency Intelligence Engine — Music Generator</title>
+  <style>
+    :root {
+      --bg:      #07070f;
+      --surface: #0f0f1e;
+      --card:    #141428;
+      --border:  #1e1e3a;
+      --accent:  #7c3aed;
+      --accent2: #06b6d4;
+      --gold:    #f59e0b;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --radius:  14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+    /* ── Nav ───────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,7,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .nav-logo-text {
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.3px;
+      color: var(--text);
+    }
+    .nav-logo-text span { color: var(--accent2); }
+    .nav-sub { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; font-weight: 400; }
 
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
-        }
+    .nav-links { display: flex; gap: 4px; align-items: center; }
+    .nav-link {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: all 0.15s;
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .nav-cta {
+      margin-left: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 20px;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
 
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            text-align: center;
-            font-size: 28px;
-        }
+    /* ── Hero ──────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 72px 32px 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(124,58,237,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(124,58,237,0.15);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #a78bfa;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, #a78bfa 0%, var(--accent2) 50%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      max-width: 560px;
+      margin: 0 auto 32px;
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 13px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 13px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: border-color 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--accent2); }
 
-        .form-group {
-            margin-bottom: 25px;
-        }
+    /* ── Frequency bars animation ──────────────────── */
+    .freq-hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+      height: 48px;
+      margin: 40px auto;
+    }
+    .fbar {
+      width: 5px;
+      border-radius: 3px;
+      background: linear-gradient(to top, var(--accent), var(--accent2));
+      animation: fwave 1.4s ease-in-out infinite;
+    }
+    @keyframes fwave {
+      0%,100% { height: 6px; opacity:0.3; }
+      50%      { opacity: 1; }
+    }
 
-        label {
-            display: block;
-            color: #555;
-            margin-bottom: 10px;
-            font-size: 18px;
-            font-weight: 500;
-        }
+    /* ── Section layout ────────────────────────────── */
+    .section { padding: 0 32px 64px; max-width: 1200px; margin: 0 auto; }
+    .section-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .section-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
+    /* ── Feature grid ──────────────────────────────── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 64px;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: rgba(124,58,237,0.5); }
+    .feature-icon { font-size: 24px; margin-bottom: 10px; }
+    .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .feature-desc  { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+    /* ── Widget demo section ───────────────────────── */
+    .widget-demo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 768px) { .widget-demo { grid-template-columns: 1fr; } }
 
-        button {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+    .widget-preview {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .widget-preview iframe {
+      display: block;
+      width: 100%;
+      border: none;
+      height: 600px;
+    }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
+    .embed-info { display: flex; flex-direction: column; gap: 20px; }
+    .embed-step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .step-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step-desc  { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+    pre {
+      background: #0a0a12;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 11px;
+      color: var(--accent2);
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.5;
+    }
+    .copy-btn {
+      margin-top: 8px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--accent); }
 
-        button:active {
-            transform: translateY(0);
-        }
+    /* ── Suno steps ────────────────────────────────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .step-card .num { font-size: 28px; font-weight: 900; color: var(--accent2); opacity: 0.6; margin-bottom: 8px; }
+    .step-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .step-card p  { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
+    /* ── Config block ──────────────────────────────── */
+    .config-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 24px;
+    }
 
-        .message {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            display: none;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .message.show {
-            display: block;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .submitted-topic {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-style: italic;
-            color: #666;
-        }
-    </style>
+    /* ── Footer ────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Blog Topic Generator</h1>
-        <form id="topicForm">
-            <div class="form-group">
-                <label for="topic">What blog topic would you like to create today?</label>
-                <input
-                    type="text"
-                    id="topic"
-                    name="topic"
-                    placeholder="e.g., The Future of AI in Healthcare"
-                    required
-                    autocomplete="off"
-                >
-            </div>
-            <button type="submit" id="submitBtn">Submit Topic</button>
-        </form>
-        <div id="message" class="message"></div>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="nav-logo-icon">🎵</div>
+    <div>
+      <div class="nav-logo-text">Frequency <span>Intelligence</span></div>
+      <div class="nav-sub">ENGINE</div>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="#widget">Widget</a>
+    <a class="nav-link" href="#embed">Embed</a>
+    <a class="nav-link" href="#setup">Setup</a>
+    <a class="nav-cta" href="/widget" target="_blank">Open App</a>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-badge">Powered by Suno AI + Frequency Science</div>
+  <h1>
+    Generate <span class="grad">Healing Frequency</span><br/>Music with AI
+  </h1>
+  <p class="hero-sub">
+    Turn any intention into studio-quality music tuned to sacred frequencies
+    (432 Hz, 528 Hz, solfeggio) — and embed it anywhere on your platform.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="/widget" target="_blank">Open Music Generator</a>
+    <a class="btn-secondary" href="#embed">Get Embed Code</a>
+  </div>
+  <div class="freq-hero" id="freqHero"></div>
+</section>
+
+<!-- ── Features ──────────────────────────────────────── -->
+<section class="section">
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🎵</div>
+      <div class="feature-title">AI Music via Suno</div>
+      <div class="feature-desc">Full Suno API integration — generate studio-quality tracks from any text prompt in seconds.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">〰️</div>
+      <div class="feature-title">Sacred Frequencies</div>
+      <div class="feature-desc">One-click frequency enhancers: 432 Hz, 528 Hz, 396 Hz solfeggio, binaural beats, and more.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Embeddable Widget</div>
+      <div class="feature-desc">Drop one script tag on any website to embed the full music generator as a responsive widget.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔑</div>
+      <div class="feature-title">Flexible Auth</div>
+      <div class="feature-desc">Use your platform's Suno key server-side, or let users provide their own API key.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎙️</div>
+      <div class="feature-title">Custom Mode</div>
+      <div class="feature-desc">Write lyrics, define style tags, and produce fully custom frequency-tuned songs.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">↻</div>
+      <div class="feature-title">Extend &amp; Remix</div>
+      <div class="feature-desc">Extend any generated clip to build longer tracks. Full generation history saved locally.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Widget demo + embed ──────────────────────────── -->
+<section class="section" id="widget">
+  <div class="section-title">Live Widget Preview</div>
+  <div class="section-sub">This is the exact widget your users will see when embedded on your site.</div>
+
+  <div class="widget-demo">
+    <div class="widget-preview">
+      <iframe src="/widget" title="Frequency Intelligence Engine Widget" allow="autoplay"></iframe>
     </div>
 
-    <script>
-        const form = document.getElementById('topicForm');
-        const topicInput = document.getElementById('topic');
-        const submitBtn = document.getElementById('submitBtn');
-        const messageDiv = document.getElementById('message');
+    <div class="embed-info" id="embed">
+      <div class="embed-step">
+        <div class="step-num">1</div>
+        <div class="step-title">Script Tag Embed</div>
+        <div class="step-desc">Add one line to any webpage. The widget auto-injects as a responsive iframe.</div>
+        <pre id="embedCode">&lt;script src="https://your-fie-domain.com/fie-widget.js"&gt;&lt;/script&gt;</pre>
+        <button class="copy-btn" onclick="copyEmbed()">Copy embed code</button>
+      </div>
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+      <div class="embed-step">
+        <div class="step-num">2</div>
+        <div class="step-title">Target Div Embed</div>
+        <div class="step-desc">Place the widget inside a specific element with custom dimensions.</div>
+        <pre>&lt;div data-fie-widget
+     data-theme="dark"
+     data-width="100%"
+     data-height="640px"&gt;&lt;/div&gt;
+&lt;script src="https://your-fie-domain.com/fie-widget.js"&gt;&lt;/script&gt;</pre>
+      </div>
 
-            const topic = topicInput.value.trim();
-            if (!topic) {
-                showMessage('Please enter a blog topic', 'error');
-                return;
-            }
+      <div class="embed-step">
+        <div class="step-num">3</div>
+        <div class="step-title">Direct iFrame</div>
+        <div class="step-desc">Embed the widget page directly for full control.</div>
+        <pre>&lt;iframe
+  src="https://your-fie-domain.com/widget"
+  width="100%" height="640"
+  style="border:none;border-radius:16px"
+  allow="autoplay"&gt;
+&lt;/iframe&gt;</pre>
+      </div>
+    </div>
+  </div>
+</section>
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+<!-- ── Setup guide ───────────────────────────────────── -->
+<section class="section" id="setup">
+  <div class="section-title">Suno API Setup</div>
+  <div class="section-sub">Four steps to connect your Suno account and start generating music.</div>
 
-            try {
-                const response = await fetch('/api/submit-topic', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ topic })
-                });
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="num">01</div>
+      <h3>Get Suno API Access</h3>
+      <p>Sign up for Suno's API program at suno.com. Apply for API access under your account developer settings. Enterprise and creator tiers available.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">02</div>
+      <h3>Copy Your API Key</h3>
+      <p>Once approved, copy your API key from the Suno developer dashboard. Keep it secret — never expose it client-side.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">03</div>
+      <h3>Configure the Engine</h3>
+      <p>Create a <code style="font-size:11px;color:var(--accent2)">.env</code> file in this project with your key. The backend proxies all Suno calls server-side so your key stays secure.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">04</div>
+      <h3>Deploy &amp; Embed</h3>
+      <p>Deploy to any Node.js host (Railway, Render, Heroku, VPS). Grab the embed code above and paste it into any website.</p>
+    </div>
+  </div>
 
-                const data = await response.json();
+  <div class="config-block">
+    <div class="step-title" style="margin-bottom:10px;">.env Configuration</div>
+    <pre># Required — your Suno API key
+SUNO_API_KEY=suno-your-key-here
 
-                if (response.ok) {
-                    showMessage(
-                        data.message + '<div class="submitted-topic">Topic: "' + topic + '"</div>',
-                        'success'
-                    );
-                    topicInput.value = '';
-                } else {
-                    showMessage(data.error || 'Failed to submit topic', 'error');
-                }
-            } catch (error) {
-                showMessage('Network error. Please try again.', 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Topic';
-            }
-        });
+# Optional — Suno API base URL (default: https://api.suno.ai)
+SUNO_API_BASE=https://api.suno.ai
 
-        function showMessage(text, type) {
-            messageDiv.innerHTML = text;
-            messageDiv.className = 'message ' + type + ' show';
+# Optional — comma-separated allowed embed origins (* = all)
+ALLOWED_ORIGINS=https://yoursite.com,https://app.yoursite.com
 
-            setTimeout(() => {
-                messageDiv.classList.remove('show');
-            }, 5000);
-        }
-    </script>
+# Optional — server port (default: 3000)
+PORT=3000</pre>
+  </div>
+</section>
+
+<footer>
+  Frequency Intelligence Engine &mdash; Powered by Suno AI &mdash; Built for High Vibration Creators
+</footer>
+
+<script>
+  (function() {
+    const hero = document.getElementById('freqHero');
+    const heights = [8,14,22,32,40,28,36,44,30,20,38,26,18,42,34,24,16,40,28,36,22,14,8];
+    heights.forEach((h, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'fbar';
+      bar.style.cssText = `height:${h}px;animation-delay:${(i*0.06).toFixed(2)}s;animation-duration:${(1.2+Math.random()*0.6).toFixed(2)}s`;
+      hero.appendChild(bar);
+    });
+  })();
+
+  function copyEmbed() {
+    const text = document.getElementById('embedCode').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy embed code', 2000);
+    });
+  }
+</script>
 </body>
 </html>
