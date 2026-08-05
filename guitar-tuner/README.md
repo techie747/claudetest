@@ -16,9 +16,12 @@ live frequency spectrum and waveform.
 - Tap a string to see its target note, or just play — the nearest string
   is auto-highlighted
 - Tap the play button on any string card to hear its exact reference
-  pitch (a synthesized pluck tone at that precise frequency), so you can
-  match it by ear as well as by eye — works for every note on every
-  instrument and string-count variant
+  pitch — a 5-partial harmonic pluck tone with a decaying lowpass filter
+  for a natural, mellowing timbre — so you can match it by ear as well
+  as by eye, on every note across every instrument and string-count
+  variant. The AudioContext is properly resumed (awaited) before
+  scheduling, which matters on iOS Safari where a freshly created
+  context stays suspended until that promise settles
 - When any string on any instrument locks into tune, a full-screen
   colorful particle burst + expanding rainbow rings fire, the spectrum
   visualizer shifts into a rotating rainbow, the dial glows, and the

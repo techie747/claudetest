@@ -296,39 +296,65 @@
     if (!playbackCtx) {
       playbackCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (playbackCtx.state === 'suspended') playbackCtx.resume();
     return playbackCtx;
   }
 
-  function playStringTone(btn, freq) {
+  // Harmonic stack (like a plucked string's overtone series) + a lowpass
+  // filter that sweeps down as the note decays, so the pluck starts bright
+  // and mellows out — much closer to a real string than a bare sine wave.
+  const PARTIALS = [
+    { mult: 1, gain: 1.00, type: 'sine' },
+    { mult: 2, gain: 0.55, type: 'sine' },
+    { mult: 3, gain: 0.28, type: 'triangle' },
+    { mult: 4, gain: 0.14, type: 'triangle' },
+    { mult: 5, gain: 0.07, type: 'sine' },
+  ];
+
+  async function playStringTone(btn, freq) {
     const ctx = getPlaybackCtx();
+    try {
+      if (ctx.state !== 'running') await ctx.resume();
+    } catch (err) {
+      console.error('AudioContext resume failed', err);
+    }
+
+    // Read currentTime only after resume settles — scheduling against a
+    // stale/frozen currentTime from a suspended context is what caused
+    // notes to schedule (and get cut off) before the context ever woke up.
     const now = ctx.currentTime;
-    const duration = 1.1;
+    const attack = 0.006;
+    const duration = 1.3;
+    const stopAt = now + duration + 0.1;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 0.7;
+    filter.frequency.setValueAtTime(freq * 7, now);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.4, 200), now + duration);
+    filter.connect(ctx.destination);
 
     const master = ctx.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.32, now + 0.01);
+    master.gain.exponentialRampToValueAtTime(0.4, now + attack);
     master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    master.connect(ctx.destination);
+    master.connect(filter);
 
-    const fundamental = ctx.createOscillator();
-    fundamental.type = 'sine';
-    fundamental.frequency.setValueAtTime(freq, now);
-    const fundamentalGain = ctx.createGain();
-    fundamentalGain.gain.value = 1;
-    fundamental.connect(fundamentalGain).connect(master);
+    const nodes = [];
+    PARTIALS.forEach(p => {
+      const osc = ctx.createOscillator();
+      osc.type = p.type;
+      osc.frequency.setValueAtTime(freq * p.mult, now);
+      const gain = ctx.createGain();
+      gain.gain.value = p.gain;
+      osc.connect(gain).connect(master);
+      osc.start(now);
+      osc.stop(stopAt);
+      nodes.push(osc, gain);
+    });
+    nodes.push(master, filter);
 
-    const harmonic = ctx.createOscillator();
-    harmonic.type = 'triangle';
-    harmonic.frequency.setValueAtTime(freq * 2, now);
-    const harmonicGain = ctx.createGain();
-    harmonicGain.gain.value = 0.3;
-    harmonic.connect(harmonicGain).connect(master);
-
-    fundamental.start(now);
-    harmonic.start(now);
-    fundamental.stop(now + duration + 0.05);
-    harmonic.stop(now + duration + 0.05);
+    const cleanupAt = (stopAt - ctx.currentTime) * 1000 + 50;
+    setTimeout(() => nodes.forEach(n => { try { n.disconnect(); } catch (e) {} }), Math.max(0, cleanupAt));
 
     if (btn) {
       btn.classList.add('playing');
