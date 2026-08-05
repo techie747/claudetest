@@ -24,6 +24,32 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.celebration {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 40;
+  mix-blend-mode: screen;
+}
+
+@keyframes screenPulse {
+  0% { filter: brightness(1) saturate(1); }
+  25% { filter: brightness(1.5) saturate(1.8); }
+  100% { filter: brightness(1) saturate(1); }
+}
+.app.pulse { animation: screenPulse 0.45s ease-out; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+.app.pulse .dial-wrap { animation: shake 0.4s ease-out; }
+
 .app {
   min-height: 100dvh;
   display: flex;
@@ -153,6 +179,11 @@ html, body {
   width: 100%;
   max-width: 420px;
   margin-top: 10px;
+  border-radius: 24px;
+  transition: filter 0.25s ease;
+}
+.dial-wrap.tuned {
+  filter: drop-shadow(0 0 22px rgba(92,255,177,0.5));
 }
 .dial { width: 100%; height: auto; display: block; }
 

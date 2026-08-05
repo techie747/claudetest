@@ -110,6 +110,9 @@
   const ticksGroup = document.getElementById('ticks');
   const spectrumCanvas = document.getElementById('spectrum');
   const waveCanvas = document.getElementById('wave');
+  const celebrationCanvas = document.getElementById('celebration');
+  const appEl = document.querySelector('.app');
+  const dialWrapEl = document.querySelector('.dial-wrap');
 
   // --- Audio state ---
   let audioCtx = null;
@@ -256,6 +259,11 @@
     clearActiveString();
     clearCanvas(spectrumCanvas);
     clearCanvas(waveCanvas);
+    dialWrapEl.classList.remove('tuned');
+    particles = [];
+    rings = [];
+    wasInTune = false;
+    clearCanvas(celebrationCanvas);
   }
 
   function clearCanvas(canvas) {
@@ -273,6 +281,95 @@
     });
   }
   window.addEventListener('resize', () => { if (listening) resizeCanvases(); });
+
+  // --- In-tune celebration: particle burst + expanding rings + haptic pulse ---
+  let celW = 0, celH = 0;
+  function resizeCelebration() {
+    const dpr = window.devicePixelRatio || 1;
+    celW = window.innerWidth;
+    celH = window.innerHeight;
+    celebrationCanvas.width = celW * dpr;
+    celebrationCanvas.height = celH * dpr;
+    celebrationCanvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCelebration);
+  resizeCelebration();
+
+  let particles = [];
+  let rings = [];
+  let wasInTune = false;
+  let lastCelebrationAt = -Infinity;
+  let rainbowPhase = 0;
+
+  function spawnCelebration() {
+    const cx = celW / 2;
+    const cy = celH * 0.4;
+    const count = 140;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 7;
+      particles.push({
+        x: cx, y: cy,
+        angle, speed,
+        life: 0,
+        maxLife: 50 + Math.random() * 40,
+        hue: Math.random() * 360,
+        size: 2 + Math.random() * 4,
+      });
+    }
+    for (let i = 0; i < 3; i++) {
+      rings.push({
+        x: cx, y: cy,
+        life: -i * 6,
+        maxLife: 55,
+        maxRadius: Math.max(celW, celH) * 0.55,
+        hue: Math.random() * 360,
+      });
+    }
+
+    appEl.classList.remove('pulse');
+    void appEl.offsetWidth; // restart animation
+    appEl.classList.add('pulse');
+    setTimeout(() => appEl.classList.remove('pulse'), 500);
+
+    if (navigator.vibrate) navigator.vibrate([70, 40, 110]);
+  }
+
+  function updateCelebration(ctx) {
+    ctx.clearRect(0, 0, celW, celH);
+
+    rings.forEach(r => { r.life++; });
+    rings = rings.filter(r => r.life < r.maxLife);
+    rings.forEach(r => {
+      if (r.life < 0) return;
+      const t = r.life / r.maxLife;
+      const radius = t * r.maxRadius;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${(r.hue + r.life * 5) % 360}, 95%, 62%, ${(1 - t) * 0.8})`;
+      ctx.lineWidth = 3 + (1 - t) * 5;
+      ctx.stroke();
+    });
+
+    particles.forEach(p => {
+      p.life++;
+      p.x += Math.cos(p.angle) * p.speed;
+      p.y += Math.sin(p.angle) * p.speed;
+      p.speed *= 0.965;
+    });
+    particles = particles.filter(p => p.life < p.maxLife);
+    particles.forEach(p => {
+      const t = p.life / p.maxLife;
+      const hue = (p.hue + p.life * 6) % 360;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, p.size * (1 - t * 0.6)), 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${hue}, 100%, 65%, ${1 - t})`;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+  }
 
   // Autocorrelation-based pitch detection (ACF2+)
   function detectPitch(buf, sampleRate) {
@@ -359,7 +456,7 @@
     activeStringIndex = idx;
   }
 
-  function drawSpectrum() {
+  function drawSpectrum(inTune) {
     const ctx = spectrumCanvas.getContext('2d');
     const rect = spectrumCanvas.getBoundingClientRect();
     const w = rect.width, h = rect.height;
@@ -370,16 +467,29 @@
     const step = Math.floor(freqData.length / 3 / bars); // focus on lower/mid freqs
     const barWidth = w / bars;
 
+    if (inTune) rainbowPhase = (rainbowPhase + 3) % 360;
+
     for (let i = 0; i < bars; i++) {
       let sum = 0;
       for (let j = 0; j < step; j++) sum += freqData[i * step + j];
       const val = sum / step;
       const barH = (val / 255) * h * 0.95;
-      const hue = 150 + (val / 255) * 60;
-      ctx.fillStyle = `hsla(${hue}, 90%, 60%, ${0.35 + (val / 255) * 0.5})`;
+      const hue = inTune
+        ? (rainbowPhase + (i / bars) * 360) % 360
+        : 150 + (val / 255) * 60;
+      const sat = inTune ? 100 : 90;
+      const light = inTune ? 65 : 60;
+      ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${0.45 + (val / 255) * 0.55})`;
+      if (inTune) {
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 6;
+      } else {
+        ctx.shadowBlur = 0;
+      }
       const x = i * barWidth;
       ctx.fillRect(x, h - barH, barWidth - 2, barH);
     }
+    ctx.shadowBlur = 0;
   }
 
   function drawWave() {
@@ -408,10 +518,8 @@
     if (!listening) return;
     analyser.getFloatTimeDomainData(timeData);
 
-    drawSpectrum();
-    drawWave();
-
     const freq = detectPitch(timeData, audioCtx.sampleRate);
+    let inTune = false;
 
     if (freq > 0 && freq < 1200) {
       silenceFrames = 0;
@@ -425,7 +533,7 @@
 
       setNeedle(note.cents);
 
-      const inTune = Math.abs(note.cents) <= 5;
+      inTune = Math.abs(note.cents) <= 5;
       const flat = note.cents < -5;
       const sharp = note.cents > 5;
 
@@ -435,18 +543,31 @@
       centsEl.classList.toggle('in-tune', inTune);
       centsEl.classList.toggle('flat', flat);
       centsEl.classList.toggle('sharp', sharp);
+      dialWrapEl.classList.toggle('tuned', inTune);
 
       const strIdx = nearestString(freq);
       highlightString(strIdx);
 
       statusEl.textContent = inTune ? 'In tune!' : (flat ? 'Tune up (too low)' : 'Tune down (too high)');
+
+      if (inTune && !wasInTune && (performance.now() - lastCelebrationAt) > 1200) {
+        spawnCelebration();
+        lastCelebrationAt = performance.now();
+      }
+      wasInTune = inTune;
     } else {
       silenceFrames++;
       if (silenceFrames > 30) {
         noteDisplayEl.classList.remove('in-tune', 'flat', 'sharp');
         centsEl.classList.remove('in-tune', 'flat', 'sharp');
+        dialWrapEl.classList.remove('tuned');
       }
+      wasInTune = false;
     }
+
+    drawSpectrum(inTune);
+    drawWave();
+    updateCelebration(celebrationCanvas.getContext('2d'));
 
     rafId = requestAnimationFrame(loop);
   }

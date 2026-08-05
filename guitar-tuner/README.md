@@ -15,6 +15,10 @@ live frequency spectrum and waveform.
 - Live frequency spectrum + waveform visualizer
 - Tap a string to see its target note, or just play — the nearest string
   is auto-highlighted
+- When any string on any instrument locks into tune, a full-screen
+  colorful particle burst + expanding rainbow rings fire, the spectrum
+  visualizer shifts into a rotating rainbow, the dial glows, and the
+  device vibrates (where supported)
 - No build step, no dependencies — plain HTML/CSS/JS, works great on phones
 
 ## Running it
