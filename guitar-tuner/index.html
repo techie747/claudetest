@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e17">
+<link rel="icon" href="data:,">
+<title>Pitch — Guitar / Bass / Ukulele Tuner</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Pitch</span>
+    </div>
+    <button id="startBtn" class="mic-btn" aria-label="Start tuner">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+        <line x1="12" y1="19" x2="12" y2="23"></line>
+        <line x1="8" y1="23" x2="16" y2="23"></line>
+      </svg>
+      <span>Start</span>
+    </button>
+  </header>
+
+  <nav class="instrument-select" role="tablist">
+    <button class="inst-tab active" data-inst="guitar" role="tab" aria-selected="true">Guitar</button>
+    <button class="inst-tab" data-inst="bass" role="tab" aria-selected="false">Bass</button>
+    <button class="inst-tab" data-inst="ukulele" role="tab" aria-selected="false">Ukulele</button>
+  </nav>
+
+  <main class="tuner-stage">
+
+    <div class="spectrum-wrap">
+      <canvas id="spectrum" class="spectrum"></canvas>
+      <canvas id="wave" class="wave"></canvas>
+    </div>
+
+    <div class="dial-wrap">
+      <svg id="dial" class="dial" viewBox="0 0 300 170" aria-hidden="true">
+        <defs>
+          <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ff5470"/>
+            <stop offset="45%" stop-color="#ffb454"/>
+            <stop offset="50%" stop-color="#5cffb1"/>
+            <stop offset="55%" stop-color="#ffb454"/>
+            <stop offset="100%" stop-color="#ff5470"/>
+          </linearGradient>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <path d="M 20 150 A 130 130 0 0 1 280 150" fill="none" stroke="#1b2233" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 20 150 A 130 130 0 0 1 280 150" fill="none" stroke="url(#arcGradient)" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+
+        <g id="ticks"></g>
+
+        <g id="needleGroup" filter="url(#glow)">
+          <line id="needle" x1="150" y1="150" x2="150" y2="35" stroke="#eafff5" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="150" cy="150" r="7" fill="#eafff5"/>
+        </g>
+      </svg>
+
+      <div class="readout">
+        <div class="note-display">
+          <span id="noteLetter" class="note-letter">–</span><span id="noteOctave" class="note-octave"></span>
+        </div>
+        <div id="cents" class="cents">0¢</div>
+        <div id="freq" class="freq">0.0 Hz</div>
+      </div>
+    </div>
+
+    <div class="strings-wrap">
+      <div id="strings" class="strings"></div>
+    </div>
+
+    <p id="status" class="status">Tap Start and allow microphone access to begin tuning.</p>
+
+  </main>
+
+  <footer class="foot">
+    <span>Play a string or note — the tuner listens automatically.</span>
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
