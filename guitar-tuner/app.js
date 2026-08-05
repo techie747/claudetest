@@ -7,40 +7,98 @@
   const INSTRUMENTS = {
     guitar: {
       label: 'Guitar',
-      strings: [
-        { name: 'E', sub: 'low', freq: 82.41 },
-        { name: 'A', sub: '', freq: 110.00 },
-        { name: 'D', sub: '', freq: 146.83 },
-        { name: 'G', sub: '', freq: 196.00 },
-        { name: 'B', sub: '', freq: 246.94 },
-        { name: 'E', sub: 'high', freq: 329.63 },
-      ],
+      variants: {
+        '6': {
+          label: '6-String',
+          strings: [
+            { name: 'E', sub: 'low', freq: 82.41 },
+            { name: 'A', sub: '', freq: 110.00 },
+            { name: 'D', sub: '', freq: 146.83 },
+            { name: 'G', sub: '', freq: 196.00 },
+            { name: 'B', sub: '', freq: 246.94 },
+            { name: 'E', sub: 'high', freq: 329.63 },
+          ],
+        },
+        '7': {
+          label: '7-String',
+          strings: [
+            { name: 'B', sub: 'low', freq: 61.74 },
+            { name: 'E', sub: '', freq: 82.41 },
+            { name: 'A', sub: '', freq: 110.00 },
+            { name: 'D', sub: '', freq: 146.83 },
+            { name: 'G', sub: '', freq: 196.00 },
+            { name: 'B', sub: '', freq: 246.94 },
+            { name: 'E', sub: 'high', freq: 329.63 },
+          ],
+        },
+        '8': {
+          label: '8-String',
+          strings: [
+            { name: 'F#', sub: 'low', freq: 46.25 },
+            { name: 'B', sub: '', freq: 61.74 },
+            { name: 'E', sub: '', freq: 82.41 },
+            { name: 'A', sub: '', freq: 110.00 },
+            { name: 'D', sub: '', freq: 146.83 },
+            { name: 'G', sub: '', freq: 196.00 },
+            { name: 'B', sub: '', freq: 246.94 },
+            { name: 'E', sub: 'high', freq: 329.63 },
+          ],
+        },
+      },
     },
     bass: {
       label: 'Bass',
-      strings: [
-        { name: 'E', sub: 'low', freq: 41.20 },
-        { name: 'A', sub: '', freq: 55.00 },
-        { name: 'D', sub: '', freq: 73.42 },
-        { name: 'G', sub: '', freq: 98.00 },
-      ],
+      variants: {
+        '4': {
+          label: '4-String',
+          strings: [
+            { name: 'E', sub: 'low', freq: 41.20 },
+            { name: 'A', sub: '', freq: 55.00 },
+            { name: 'D', sub: '', freq: 73.42 },
+            { name: 'G', sub: '', freq: 98.00 },
+          ],
+        },
+        '5': {
+          label: '5-String',
+          strings: [
+            { name: 'B', sub: 'low', freq: 30.87 },
+            { name: 'E', sub: '', freq: 41.20 },
+            { name: 'A', sub: '', freq: 55.00 },
+            { name: 'D', sub: '', freq: 73.42 },
+            { name: 'G', sub: '', freq: 98.00 },
+          ],
+        },
+      },
     },
     ukulele: {
       label: 'Ukulele',
-      strings: [
-        { name: 'G', sub: '', freq: 392.00 },
-        { name: 'C', sub: '', freq: 261.63 },
-        { name: 'E', sub: '', freq: 329.63 },
-        { name: 'A', sub: '', freq: 440.00 },
-      ],
+      variants: {
+        standard: {
+          label: 'Standard',
+          strings: [
+            { name: 'G', sub: '', freq: 392.00 },
+            { name: 'C', sub: '', freq: 261.63 },
+            { name: 'E', sub: '', freq: 329.63 },
+            { name: 'A', sub: '', freq: 440.00 },
+          ],
+        },
+      },
     },
   };
 
+  const DEFAULT_VARIANT = { guitar: '6', bass: '4', ukulele: 'standard' };
+
   let currentInstrument = 'guitar';
+  let currentVariant = DEFAULT_VARIANT[currentInstrument];
+
+  function currentStrings() {
+    return INSTRUMENTS[currentInstrument].variants[currentVariant].strings;
+  }
 
   // --- DOM ---
   const startBtn = document.getElementById('startBtn');
   const instTabs = document.querySelectorAll('.inst-tab');
+  const variantRow = document.getElementById('variantRow');
   const stringsEl = document.getElementById('strings');
   const noteLetterEl = document.getElementById('noteLetter');
   const noteOctaveEl = document.getElementById('noteOctave');
@@ -62,16 +120,41 @@
   let freqData = null;
   let listening = false;
 
+  function renderVariants() {
+    variantRow.innerHTML = '';
+    const variants = INSTRUMENTS[currentInstrument].variants;
+    const keys = Object.keys(variants);
+    if (keys.length <= 1) {
+      variantRow.hidden = true;
+      return;
+    }
+    variantRow.hidden = false;
+    keys.forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'variant-tab' + (key === currentVariant ? ' active' : '');
+      btn.dataset.variant = key;
+      btn.textContent = variants[key].label;
+      btn.addEventListener('click', () => {
+        currentVariant = key;
+        renderVariants();
+        renderStrings();
+      });
+      variantRow.appendChild(btn);
+    });
+  }
+
   function renderStrings() {
     stringsEl.innerHTML = '';
-    const inst = INSTRUMENTS[currentInstrument];
-    inst.strings.forEach((s, i) => {
+    const strings = currentStrings();
+    stringsEl.classList.toggle('strings-many', strings.length > 6);
+    strings.forEach((s, i) => {
       const btn = document.createElement('button');
       btn.className = 'string-btn';
       btn.dataset.index = i;
       btn.innerHTML = `<span>${s.name}</span><span class="sub">${s.sub || s.freq.toFixed(1) + ' Hz'}</span>`;
       stringsEl.appendChild(btn);
     });
+    clearActiveString();
   }
 
   function renderTicks() {
@@ -102,6 +185,8 @@
       tab.classList.add('active');
       tab.setAttribute('aria-selected', 'true');
       currentInstrument = tab.dataset.inst;
+      currentVariant = DEFAULT_VARIANT[currentInstrument];
+      renderVariants();
       renderStrings();
     });
   });
@@ -245,9 +330,9 @@
   }
 
   function nearestString(freq) {
-    const inst = INSTRUMENTS[currentInstrument];
+    const strings = currentStrings();
     let best = null, bestDiff = Infinity;
-    inst.strings.forEach((s, i) => {
+    strings.forEach((s, i) => {
       const diff = Math.abs(12 * Math.log2(freq / s.freq));
       if (diff < bestDiff) { bestDiff = diff; best = i; }
     });
@@ -366,6 +451,7 @@
     rafId = requestAnimationFrame(loop);
   }
 
+  renderVariants();
   renderStrings();
   renderTicks();
 })();

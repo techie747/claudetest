@@ -99,6 +99,29 @@ html, body {
   color: var(--text-hi);
 }
 
+/* Variant selector (string count) */
+.variant-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 4px 0;
+}
+.variant-tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-lo);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.variant-tab.active {
+  background: rgba(77,214,255,0.12);
+  border-color: rgba(77,214,255,0.4);
+  color: var(--accent-2);
+}
+
 /* Tuner stage */
 .tuner-stage {
   display: flex;
@@ -190,6 +213,9 @@ html, body {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
+}
+.strings.strings-many {
+  grid-template-columns: repeat(4, 1fr);
 }
 .string-btn {
   display: flex;

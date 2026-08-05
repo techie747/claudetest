@@ -8,6 +8,8 @@ live frequency spectrum and waveform.
 
 - Real-time pitch detection (autocorrelation) via the Web Audio API
 - Switch between Guitar, Bass, and Ukulele standard tunings
+- Guitar supports 6, 7, and 8-string standard tunings (low B / low F#)
+- Bass supports 4 and 5-string standard tunings (low B)
 - Animated needle dial with cents-off-pitch readout and color feedback
   (blue = flat, amber = sharp, green = in tune)
 - Live frequency spectrum + waveform visualizer
