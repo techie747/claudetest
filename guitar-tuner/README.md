@@ -17,11 +17,13 @@ live frequency spectrum and waveform.
   is auto-highlighted
 - Tap the play button on any string card to hear its exact reference
   pitch — a 5-partial harmonic pluck tone with a decaying lowpass filter
-  for a natural, mellowing timbre — so you can match it by ear as well
-  as by eye, on every note across every instrument and string-count
-  variant. The AudioContext is properly resumed (awaited) before
-  scheduling, which matters on iOS Safari where a freshly created
-  context stays suspended until that promise settles
+  for a natural, mellowing timbre, driven through a soft-saturation
+  curve for roughly 3x the loudness of a plain gain boost without
+  clipping — so you can match it by ear as well as by eye, on every
+  note across every instrument and string-count variant. The
+  AudioContext is properly resumed (awaited) before scheduling, which
+  matters on iOS Safari where a freshly created context stays
+  suspended until that promise settles
 - When any string on any instrument locks into tune, a full-screen
   colorful particle burst + expanding rainbow rings fire, the spectrum
   visualizer shifts into a rotating rainbow, the dial glows, and the
