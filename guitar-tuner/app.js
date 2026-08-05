@@ -154,7 +154,15 @@
       const btn = document.createElement('button');
       btn.className = 'string-btn';
       btn.dataset.index = i;
-      btn.innerHTML = `<span>${s.name}</span><span class="sub">${s.sub || s.freq.toFixed(1) + ' Hz'}</span>`;
+      btn.setAttribute('aria-label', `Play reference tone for ${s.name} ${s.sub || ''} (${s.freq.toFixed(1)} Hz)`);
+      btn.innerHTML = `
+        <span class="note">${s.name}</span>
+        <span class="sub">${s.sub || s.freq.toFixed(1) + ' Hz'}</span>
+        <span class="play-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </span>
+      `;
+      btn.addEventListener('click', () => playStringTone(btn, s.freq));
       stringsEl.appendChild(btn);
     });
     clearActiveString();
@@ -281,6 +289,52 @@
     });
   }
   window.addEventListener('resize', () => { if (listening) resizeCanvases(); });
+
+  // --- Reference tone playback: hear the exact pitch for any string/note ---
+  let playbackCtx = null;
+  function getPlaybackCtx() {
+    if (!playbackCtx) {
+      playbackCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (playbackCtx.state === 'suspended') playbackCtx.resume();
+    return playbackCtx;
+  }
+
+  function playStringTone(btn, freq) {
+    const ctx = getPlaybackCtx();
+    const now = ctx.currentTime;
+    const duration = 1.1;
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.32, now + 0.01);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    master.connect(ctx.destination);
+
+    const fundamental = ctx.createOscillator();
+    fundamental.type = 'sine';
+    fundamental.frequency.setValueAtTime(freq, now);
+    const fundamentalGain = ctx.createGain();
+    fundamentalGain.gain.value = 1;
+    fundamental.connect(fundamentalGain).connect(master);
+
+    const harmonic = ctx.createOscillator();
+    harmonic.type = 'triangle';
+    harmonic.frequency.setValueAtTime(freq * 2, now);
+    const harmonicGain = ctx.createGain();
+    harmonicGain.gain.value = 0.3;
+    harmonic.connect(harmonicGain).connect(master);
+
+    fundamental.start(now);
+    harmonic.start(now);
+    fundamental.stop(now + duration + 0.05);
+    harmonic.stop(now + duration + 0.05);
+
+    if (btn) {
+      btn.classList.add('playing');
+      setTimeout(() => btn.classList.remove('playing'), duration * 1000);
+    }
+  }
 
   // --- In-tune celebration: particle burst + expanding rings + haptic pulse ---
   let celW = 0, celH = 0;

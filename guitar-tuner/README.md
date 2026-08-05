@@ -15,6 +15,10 @@ live frequency spectrum and waveform.
 - Live frequency spectrum + waveform visualizer
 - Tap a string to see its target note, or just play — the nearest string
   is auto-highlighted
+- Tap the play button on any string card to hear its exact reference
+  pitch (a synthesized pluck tone at that precise frequency), so you can
+  match it by ear as well as by eye — works for every note on every
+  instrument and string-count variant
 - When any string on any instrument locks into tune, a full-screen
   colorful particle burst + expanding rainbow rings fire, the spectrum
   visualizer shifts into a rotating rainbow, the dial glows, and the
