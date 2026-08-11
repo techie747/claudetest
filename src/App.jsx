@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, useContext, createContext } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, X, ChevronDown, ChevronUp, Check, Trash2, Image as ImageIcon, Loader2, AlertTriangle, Sparkles, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, Check, Trash2, Image as ImageIcon, Loader2, AlertTriangle, Sparkles, ArrowLeft, Sun, Moon, KeyRound, Eye, EyeOff } from 'lucide-react';
 
 const DARK = {
   bg: '#0B0D10',
@@ -160,6 +160,23 @@ async function saveTrades(trades) {
   }
 }
 
+function getApiKey() {
+  try {
+    return window.localStorage.getItem('oa-api-key') || '';
+  } catch (e) {
+    return '';
+  }
+}
+function setApiKey(key) {
+  try {
+    if (key) window.localStorage.setItem('oa-api-key', key);
+    else window.localStorage.removeItem('oa-api-key');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function runAnalysis({ ticker, image }) {
   let contentBlocks;
   try {
@@ -184,9 +201,13 @@ async function runAnalysis({ ticker, image }) {
 
   let response;
   try {
+    const clientKey = getApiKey();
     response = await fetch('/api/analyze', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(clientKey ? { 'x-anthropic-key': clientKey } : {}),
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
@@ -1139,6 +1160,85 @@ function JournalView({ trades, onAddTrade, onCloseTrade, onDeleteTrade }) {
   );
 }
 
+function AdminView() {
+  const C = useContext(ThemeContext);
+  const inputStyle = getInputStyle(C);
+  const [key, setKey] = useState(() => getApiKey());
+  const [reveal, setReveal] = useState(false);
+  const [savedMsg, setSavedMsg] = useState('');
+
+  const hasKey = key.trim().length > 0;
+  const masked = key ? `${key.slice(0, 6)}${'•'.repeat(Math.max(0, key.length - 10))}${key.slice(-4)}` : '';
+
+  const handleSave = () => {
+    setApiKey(key.trim());
+    setSavedMsg(key.trim() ? 'Key saved to this device.' : 'Key cleared.');
+    setTimeout(() => setSavedMsg(''), 3000);
+  };
+  const handleClear = () => {
+    setKey('');
+    setApiKey('');
+    setSavedMsg('Key cleared.');
+    setTimeout(() => setSavedMsg(''), 3000);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <KeyRound size={16} color={C.accent} />
+          <div style={{ color: C.text, fontFamily: "'Space Grotesk', sans-serif" }} className="text-lg font-semibold">Anthropic API key</div>
+        </div>
+        <div style={{ color: C.textDim, fontSize: 14 }} className="mb-4">
+          Paste your Anthropic API key here so "Run analysis" works without editing anything on Vercel. It's stored only in this browser's local storage and sent to this app's own <code style={{ color: C.accent }}>/api/analyze</code> endpoint with each analysis request — it's never exposed to any other site. Get a key at <span style={{ color: C.accent }}>console.anthropic.com</span>.
+        </div>
+
+        <Field label="API key">
+          <div className="relative">
+            <input
+              style={{ ...inputStyle, paddingRight: 40 }}
+              type={reveal ? 'text' : 'password'}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="sk-ant-…"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              onClick={() => setReveal((r) => !r)}
+              aria-label={reveal ? 'Hide key' : 'Reveal key'}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: C.textFaint }}
+            >
+              {reveal ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </Field>
+
+        <div className="flex items-center gap-2 mt-1">
+          <button onClick={handleSave} style={{ background: C.accent, color: '#14171C' }} className="px-4 py-2 rounded-md text-sm font-medium">Save key</button>
+          {hasKey && <button onClick={handleClear} style={{ color: C.negative, border: `1px solid ${C.negative}` }} className="px-4 py-2 rounded-md text-sm">Clear key</button>}
+          {savedMsg && <span style={{ color: C.positive, fontSize: 13 }}>{savedMsg}</span>}
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 18, paddingTop: 14 }}>
+          <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-2">Current status</div>
+          <div style={{ color: C.textDim, fontSize: 14 }}>
+            {hasKey ? <>Key on this device: <span style={{ color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{masked}</span></> : 'No key saved on this device — Run analysis will fall back to the server-side ANTHROPIC_API_KEY, if one is set.'}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-5">
+        <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-2">A note on security</div>
+        <div style={{ color: C.textDim, fontSize: 14, lineHeight: 1.6 }}>
+          This is the fast path for a single-user tool on your own device — the key lives in this browser's local storage, not in the app's source code or a public URL. For a shared or multi-device deployment, the more robust option is still setting <code style={{ color: C.accent }}>ANTHROPIC_API_KEY</code> as a server-side environment variable in Vercel, which this Admin key will override when present.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Header({ tab, setTab, openCount, theme, toggleTheme }) {
   const C = useContext(ThemeContext);
   return (
@@ -1160,6 +1260,9 @@ function Header({ tab, setTab, openCount, theme, toggleTheme }) {
           <button onClick={() => setTab('analyze')} style={{ background: tab === 'analyze' ? C.accentSoft : 'transparent', color: tab === 'analyze' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">Analyze</button>
           <button onClick={() => setTab('journal')} style={{ background: tab === 'journal' ? C.accentSoft : 'transparent', color: tab === 'journal' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">
             Journal{openCount > 0 && <span style={{ background: C.accent, color: '#14171C' }} className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full">{openCount}</span>}
+          </button>
+          <button onClick={() => setTab('admin')} style={{ background: tab === 'admin' ? C.accentSoft : 'transparent', color: tab === 'admin' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5">
+            <KeyRound size={14} /> Admin
           </button>
         </div>
       </div>
@@ -1226,6 +1329,8 @@ export default function OptionsArchitectApp() {
             <div style={{ color: C.textFaint }} className="py-16 text-center text-sm">Loading…</div>
           ) : tab === 'analyze' ? (
             <AnalyzeView onAddTrade={addTrade} />
+          ) : tab === 'admin' ? (
+            <AdminView />
           ) : (
             <JournalView trades={trades} onAddTrade={addTrade} onCloseTrade={closeTrade} onDeleteTrade={deleteTrade} />
           )}

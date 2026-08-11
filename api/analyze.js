@@ -4,9 +4,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = req.headers['x-anthropic-key'] || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured on the server' });
+    res.status(500).json({ error: 'No Anthropic API key configured — add one in the Admin tab, or set ANTHROPIC_API_KEY on the server.' });
     return;
   }
 
