@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useContext, createContext } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Plus, X, ChevronDown, ChevronUp, Check, Trash2, Image as ImageIcon, Loader2, AlertTriangle, Sparkles, ArrowLeft } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, Check, Trash2, Image as ImageIcon, Loader2, AlertTriangle, Sparkles, ArrowLeft, Sun, Moon } from 'lucide-react';
 
-const C = {
+const DARK = {
   bg: '#0B0D10',
   panel: '#14171C',
   panelAlt: '#1A1E24',
@@ -18,6 +18,25 @@ const C = {
   negative: '#C0684F',
   negativeSoft: 'rgba(192,104,79,0.12)',
 };
+
+const LIGHT = {
+  bg: '#F4F2ED',
+  panel: '#FFFFFF',
+  panelAlt: '#F1EFE9',
+  border: '#DDD8CC',
+  borderLight: '#C9C2B1',
+  text: '#20211F',
+  textDim: '#5B5A52',
+  textFaint: '#8A887D',
+  accent: '#9C7A22',
+  accentSoft: 'rgba(156,122,34,0.12)',
+  positive: '#2F7A5C',
+  positiveSoft: 'rgba(47,122,92,0.12)',
+  negative: '#A6452E',
+  negativeSoft: 'rgba(166,69,46,0.12)',
+};
+
+const ThemeContext = createContext(DARK);
 
 const STRUCTURES = [
   'Long Call', 'Long Put', 'Bull Call Debit Spread', 'Bear Put Debit Spread',
@@ -90,7 +109,7 @@ function gradeFromScore(score) {
   if (score >= 40) return 'C';
   return 'D';
 }
-function gradeColor(g) {
+function gradeColor(g, C) {
   if (g === 'A+') return '#6FC29B';
   if (g === 'A') return C.positive;
   if (g === 'B') return C.accent;
@@ -314,30 +333,35 @@ function computeInsights(trades) {
   return insights;
 }
 
-const inputStyle = {
-  background: C.panelAlt, border: `1px solid ${C.borderLight}`, color: C.text,
-  borderRadius: 6, padding: '8px 10px', fontSize: 13.5, width: '100%', outline: 'none',
-};
+function getInputStyle(C) {
+  return {
+    background: C.panelAlt, border: `1px solid ${C.borderLight}`, color: C.text,
+    borderRadius: 6, padding: '8px 10px', fontSize: 14.5, width: '100%', outline: 'none',
+  };
+}
 function Field({ label, children }) {
+  const C = useContext(ThemeContext);
   return (
     <div className="mb-3">
-      <div style={{ color: C.textDim, fontSize: 11.5 }} className="mb-1 uppercase tracking-wide">{label}</div>
+      <div style={{ color: C.textDim, fontSize: 12.5 }} className="mb-1 uppercase tracking-wide">{label}</div>
       {children}
     </div>
   );
 }
 function PillarSlider({ label, value, onChange }) {
+  const C = useContext(ThemeContext);
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span style={{ color: C.textDim, fontSize: 12 }}>{label}</span>
-        <span style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }}>{value}/20</span>
+        <span style={{ color: C.textDim, fontSize: 13 }}>{label}</span>
+        <span style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{value}/20</span>
       </div>
       <input type="range" min="0" max="20" value={value} onChange={(e) => onChange(Number(e.target.value))} className="oa-slider w-full" style={{ accentColor: C.accent }} />
     </div>
   );
 }
 function StatCard({ label, value, sub, valueColor }) {
+  const C = useContext(ThemeContext);
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg px-4 py-3 flex-1 min-w-[130px]">
       <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-1.5">{label}</div>
@@ -347,6 +371,7 @@ function StatCard({ label, value, sub, valueColor }) {
   );
 }
 function EmptyState({ onAdd }) {
+  const C = useContext(ThemeContext);
   return (
     <div style={{ border: `1px dashed ${C.borderLight}`, borderRadius: 10 }} className="flex flex-col items-center justify-center text-center py-16 px-6">
       <div style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: 2 }} className="mb-3">NO TRADES LOGGED</div>
@@ -360,15 +385,16 @@ function EmptyState({ onAdd }) {
 }
 
 function GradeLadder({ data }) {
+  const C = useContext(ThemeContext);
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
       <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-4">Grade Ladder — win rate by conviction band</div>
       <div className="flex flex-col gap-2.5">
         {data.map((d) => (
           <div key={d.grade} className="flex items-center gap-3">
-            <div style={{ color: gradeColor(d.grade), fontFamily: "'Space Grotesk', sans-serif", width: 30 }} className="text-sm font-bold text-right">{d.grade}</div>
+            <div style={{ color: gradeColor(d.grade, C), fontFamily: "'Space Grotesk', sans-serif", width: 30 }} className="text-sm font-bold text-right">{d.grade}</div>
             <div style={{ background: C.panelAlt, borderRadius: 4 }} className="flex-1 h-6 relative overflow-hidden">
-              <div style={{ width: `${d.count ? d.winRate : 0}%`, background: gradeColor(d.grade), opacity: d.count ? 0.85 : 0, transition: 'width 0.4s ease' }} className="h-full rounded" />
+              <div style={{ width: `${d.count ? d.winRate : 0}%`, background: gradeColor(d.grade, C), opacity: d.count ? 0.85 : 0, transition: 'width 0.4s ease' }} className="h-full rounded" />
               <div style={{ color: d.count ? '#0B0D10' : C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11 }} className="absolute inset-0 flex items-center px-2">
                 {d.count ? `${d.winRate.toFixed(0)}%` : 'no trades yet'}
               </div>
@@ -382,6 +408,7 @@ function GradeLadder({ data }) {
   );
 }
 function PnlChart({ data }) {
+  const C = useContext(ThemeContext);
   if (!data.length) {
     return <div style={{ background: C.panel, border: `1px solid ${C.border}`, color: C.textFaint }} className="rounded-lg p-4 flex items-center justify-center h-[220px] text-sm">Cumulative P&L appears once trades are closed.</div>;
   }
@@ -401,6 +428,7 @@ function PnlChart({ data }) {
   );
 }
 function StructureChart({ data }) {
+  const C = useContext(ThemeContext);
   if (!data.length) {
     return <div style={{ background: C.panel, border: `1px solid ${C.border}`, color: C.textFaint }} className="rounded-lg p-4 flex items-center justify-center h-[220px] text-sm">Structure performance appears once trades are closed.</div>;
   }
@@ -423,6 +451,7 @@ function StructureChart({ data }) {
   );
 }
 function InsightsPanel({ insights }) {
+  const C = useContext(ThemeContext);
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
       <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-3">Calibration notes</div>
@@ -439,14 +468,15 @@ function InsightsPanel({ insights }) {
 }
 
 function TradeRow({ trade, expanded, onToggle, onCloseTrade, onDelete }) {
+  const C = useContext(ThemeContext);
   const isOpen = trade.status === 'open';
   return (
     <div style={{ borderBottom: `1px solid ${C.border}` }}>
       <div onClick={onToggle} className="flex items-center gap-2 px-3 py-3 cursor-pointer hover:bg-black/10">
-        <div style={{ width: 8, height: 8, borderRadius: 999, background: gradeColor(trade.grade), flexShrink: 0 }} />
+        <div style={{ width: 8, height: 8, borderRadius: 999, background: gradeColor(trade.grade, C), flexShrink: 0 }} />
         <div style={{ color: C.text, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, width: 56 }} className="text-sm">{trade.ticker}</div>
         <div style={{ color: C.textDim }} className="text-xs flex-1 truncate hidden sm:block">{trade.structure}</div>
-        <div style={{ color: gradeColor(trade.grade), fontFamily: "'Space Grotesk', sans-serif" }} className="text-xs font-bold w-8 text-center">{trade.grade}</div>
+        <div style={{ color: gradeColor(trade.grade, C), fontFamily: "'Space Grotesk', sans-serif" }} className="text-xs font-bold w-8 text-center">{trade.grade}</div>
         <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace" }} className="text-xs w-16 hidden md:block">{fmtDate(trade.dateEntered)}</div>
         {isOpen ? (
           <span style={{ background: C.accentSoft, color: C.accent }} className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide">Open</span>
@@ -486,6 +516,7 @@ function TradeRow({ trade, expanded, onToggle, onCloseTrade, onDelete }) {
 }
 
 function AddTradeModal({ onClose, onSave, initial }) {
+  const C = useContext(ThemeContext);
   const [ticker, setTicker] = useState(initial?.ticker || '');
   const [direction, setDirection] = useState(initial?.direction || 'bullish');
   const [structure, setStructure] = useState(initial?.structure || STRUCTURES[0]);
@@ -502,6 +533,7 @@ function AddTradeModal({ onClose, onSave, initial }) {
   const score = PILLARS.reduce((s, p) => s + (pillars[p.key] || 0), 0);
   const grade = gradeFromScore(score);
   const canSave = ticker.trim().length > 0;
+  const inputStyle = getInputStyle(C);
 
   const handleSave = () => {
     if (!canSave) return;
@@ -547,7 +579,7 @@ function AddTradeModal({ onClose, onSave, initial }) {
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 14, paddingTop: 14 }}>
             <div className="flex items-center justify-between mb-3">
               <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase">Conviction engine</div>
-              <div style={{ color: gradeColor(grade), fontFamily: "'Space Grotesk', sans-serif" }} className="text-sm font-bold">{score}/100 · {grade}</div>
+              <div style={{ color: gradeColor(grade, C), fontFamily: "'Space Grotesk', sans-serif" }} className="text-sm font-bold">{score}/100 · {grade}</div>
             </div>
             {PILLARS.map((p) => <PillarSlider key={p.key} label={p.label} value={pillars[p.key]} onChange={(v) => setPillars({ ...pillars, [p.key]: v })} />)}
           </div>
@@ -570,10 +602,12 @@ function AddTradeModal({ onClose, onSave, initial }) {
 }
 
 function CloseTradeModal({ trade, onClose, onSave }) {
+  const C = useContext(ThemeContext);
   const [exitDate, setExitDate] = useState(new Date().toISOString().slice(0, 10));
   const [pnl, setPnl] = useState('');
   const [postMortem, setPostMortem] = useState('');
   const canSave = pnl !== '' && !isNaN(Number(pnl));
+  const inputStyle = getInputStyle(C);
   return (
     <div style={{ background: 'rgba(0,0,0,0.6)' }} className="fixed inset-0 z-50 flex items-center justify-center p-3">
       <div style={{ background: C.panel, border: `1px solid ${C.borderLight}` }} className="rounded-xl w-full max-w-md">
@@ -595,6 +629,7 @@ function CloseTradeModal({ trade, onClose, onSave }) {
 }
 
 function StructureTable({ structure }) {
+  const C = useContext(ThemeContext);
   const rows = [
     { label: 'Resistance 2', d: structure.resistance2 },
     { label: 'Resistance 1', d: structure.resistance1 },
@@ -609,13 +644,13 @@ function StructureTable({ structure }) {
       <div className="flex flex-col gap-1.5 mb-3">
         {rows.map((r, i) => (
           <div key={i} style={{ background: r.isCurrent ? C.accentSoft : 'transparent', borderRadius: 6, display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'center' }} className="px-2 py-1.5">
-            <div style={{ color: r.isCurrent ? C.accent : C.textDim, fontSize: 12.5, fontWeight: r.isCurrent ? 600 : 400 }}>{r.label}</div>
-            <div style={{ color: r.isCurrent ? C.accent : C.text, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600 }}>${r.d.price}</div>
-            <div style={{ color: C.textFaint, fontSize: 11 }}>{r.d.touches != null ? `${r.d.touches}x` : r.d.status || ''}</div>
+            <div style={{ color: r.isCurrent ? C.accent : C.textDim, fontSize: 14.5, fontWeight: r.isCurrent ? 600 : 400 }}>{r.label}</div>
+            <div style={{ color: r.isCurrent ? C.accent : C.text, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 600 }}>${r.d.price}</div>
+            <div style={{ color: C.textFaint, fontSize: 12.5 }}>{r.d.touches != null ? `${r.d.touches}x` : r.d.status || ''}</div>
           </div>
         ))}
       </div>
-      <div style={{ color: C.textFaint, fontSize: 11.5, borderTop: `1px solid ${C.border}`, paddingTop: 10 }} className="flex flex-wrap gap-x-4 gap-y-1">
+      <div style={{ color: C.textFaint, fontSize: 13, borderTop: `1px solid ${C.border}`, paddingTop: 10 }} className="flex flex-wrap gap-x-4 gap-y-1">
         {structure.rangeLow != null && structure.rangeHigh != null && <span>Range: ${structure.rangeLow}–${structure.rangeHigh}</span>}
         {structure.typicalSwingDollars != null && <span>Typical swing: ${structure.typicalSwingDollars} ({structure.typicalSwingPercent}%)</span>}
         {structure.expectedMove != null && <span>Expected move: ±${structure.expectedMove}</span>}
@@ -624,6 +659,7 @@ function StructureTable({ structure }) {
   );
 }
 function ConvictionPillars({ conviction }) {
+  const C = useContext(ThemeContext);
   const vals = [
     { label: 'Trend Structure', value: conviction.trend },
     { label: 'Level Integrity', value: conviction.levelIntegrity },
@@ -635,16 +671,16 @@ function ConvictionPillars({ conviction }) {
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase">Conviction score</div>
-        <div style={{ color: gradeColor(conviction.grade), fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-bold">{conviction.total}/100 · {conviction.grade}</div>
+        <div style={{ color: gradeColor(conviction.grade, C), fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-bold">{conviction.total}/100 · {conviction.grade}</div>
       </div>
       <div className="flex flex-col gap-2 mb-3">
         {vals.map((p) => (
           <div key={p.label} className="flex items-center gap-2.5">
-            <div style={{ color: C.textDim, fontSize: 11.5, width: 150 }} className="flex-shrink-0">{p.label}</div>
+            <div style={{ color: C.textDim, fontSize: 13, width: 160 }} className="flex-shrink-0">{p.label}</div>
             <div style={{ background: C.panelAlt, borderRadius: 3 }} className="flex-1 h-3 overflow-hidden">
-              <div style={{ width: `${(p.value / 20) * 100}%`, background: gradeColor(conviction.grade) }} className="h-full" />
+              <div style={{ width: `${(p.value / 20) * 100}%`, background: gradeColor(conviction.grade, C) }} className="h-full" />
             </div>
-            <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, width: 32 }} className="text-right">{p.value}/20</div>
+            <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, width: 36 }} className="text-right">{p.value}/20</div>
           </div>
         ))}
       </div>
@@ -652,11 +688,12 @@ function ConvictionPillars({ conviction }) {
         <span style={{ background: C.accentSoft, color: C.accent }} className="text-[11px] px-2 py-0.5 rounded-full capitalize">{conviction.direction}</span>
         <span style={{ background: C.panelAlt, color: C.textDim }} className="text-[11px] px-2 py-0.5 rounded-full capitalize">Vol: {conviction.volatility}</span>
       </div>
-      <div style={{ color: C.text, fontSize: 13 }}>{conviction.rationale}</div>
+      <div style={{ color: C.text, fontSize: 15 }}>{conviction.rationale}</div>
     </div>
   );
 }
 function TradeCard({ trade, onLog, logged, asOf }) {
+  const C = useContext(ThemeContext);
   const dte = computeDTE(asOf, trade.expiration);
   const estTag = trade.estimated ? ' (est.)' : '';
   return (
@@ -665,22 +702,22 @@ function TradeCard({ trade, onLog, logged, asOf }) {
         <div style={{ color: C.text, fontFamily: "'Space Grotesk', sans-serif" }} className="text-base font-semibold">{trade.name}</div>
         {trade.bestFit && <span style={{ background: C.accentSoft, color: C.accent }} className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide">Best fit</span>}
       </div>
-      <div style={{ color: C.textDim, fontSize: 13 }} className="mb-2">{trade.plainEnglish}</div>
-      <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }} className="mb-1.5">{trade.structureDetail}</div>
+      <div style={{ color: C.textDim, fontSize: 15 }} className="mb-2">{trade.plainEnglish}</div>
+      <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13.5 }} className="mb-1.5">{trade.structureDetail}</div>
       {trade.expiration && (
-        <div style={{ background: C.accentSoft, color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5 }} className="rounded px-2 py-1 mb-3 inline-block">
+        <div style={{ background: C.accentSoft, color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }} className="rounded px-2 py-1 mb-3 inline-block">
           Exp {fmtDate(trade.expiration)}{dte != null ? ` · ${dte} DTE` : ''}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2 mb-3" style={{ fontSize: 12.5 }}>
+      <div className="grid grid-cols-2 gap-2 mb-3" style={{ fontSize: 14.5 }}>
         <div><span style={{ color: C.textFaint }}>{trade.type === 'credit' ? 'Credit' : 'Cost'}{estTag} </span><span style={{ color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{fmtMoney(trade.costOrCredit)}</span></div>
         <div><span style={{ color: C.textFaint }}>Prob. profit{estTag} </span><span style={{ color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{trade.probProfit != null ? `${trade.probProfit}%` : '—'}</span></div>
         <div><span style={{ color: C.textFaint }}>Max gain{estTag} </span><span style={{ color: C.positive, fontFamily: "'IBM Plex Mono', monospace" }}>{fmtMoney(trade.maxGain)}</span></div>
         <div><span style={{ color: C.textFaint }}>Max loss{estTag} </span><span style={{ color: C.negative, fontFamily: "'IBM Plex Mono', monospace" }}>{fmtMoney(trade.maxLoss)}</span></div>
         <div className="col-span-2"><span style={{ color: C.textFaint }}>Breakeven{estTag} </span><span style={{ color: C.text, fontFamily: "'IBM Plex Mono', monospace" }}>{fmtPrice(trade.breakeven)}</span></div>
       </div>
-      {trade.whyStrikes && <div style={{ color: C.textDim, fontSize: 12, marginBottom: 8 }}><span style={{ color: C.textFaint }}>Why these strikes: </span>{trade.whyStrikes}</div>}
-      {trade.invalidation != null && <div style={{ color: C.textDim, fontSize: 12, marginBottom: 10 }}><span style={{ color: C.textFaint }}>Invalidation: </span>{fmtPrice(trade.invalidation)}</div>}
+      {trade.whyStrikes && <div style={{ color: C.textDim, fontSize: 14, marginBottom: 8 }}><span style={{ color: C.textFaint }}>Why these strikes: </span>{trade.whyStrikes}</div>}
+      {trade.invalidation != null && <div style={{ color: C.textDim, fontSize: 14, marginBottom: 10 }}><span style={{ color: C.textFaint }}>Invalidation: </span>{fmtPrice(trade.invalidation)}</div>}
       <button onClick={() => !logged && onLog()} disabled={logged} style={{ background: logged ? C.positiveSoft : C.accent, color: logged ? C.positive : '#14171C' }} className="w-full py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5">
         {logged ? (<><Check size={13} /> Logged to journal</>) : (<><Plus size={13} /> Log this trade</>)}
       </button>
@@ -710,11 +747,12 @@ const STOP_LOSS_STEPS = [
 ];
 
 function StopLossPlaybook({ trades }) {
+  const C = useContext(ThemeContext);
   if (!trades || !trades.length) return null;
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
       <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-2">Stop-loss playbook</div>
-      <div style={{ color: C.text, fontSize: 13, lineHeight: 1.6 }} className="mb-4">
+      <div style={{ color: C.text, fontSize: 15, lineHeight: 1.6 }} className="mb-4">
         Options need two triggers, not one — a price level on the underlying (your thesis breaking) and a premium level on the position itself (decay eating the trade even if price hasn't broken yet). Act on whichever hits first.
       </div>
       <div className="flex flex-col gap-3 mb-4">
@@ -723,8 +761,8 @@ function StopLossPlaybook({ trades }) {
           return (
             <div key={i} style={{ background: C.panelAlt, borderRadius: 8 }} className="p-3">
               <div style={{ color: C.text, fontFamily: "'Space Grotesk', sans-serif" }} className="text-sm font-semibold mb-1.5">{t.name}</div>
-              <div style={{ color: C.textDim, fontSize: 12.5, marginBottom: 4 }}><span style={{ color: C.accent }}>Price trigger — </span>{plan.priceRule}</div>
-              <div style={{ color: C.textDim, fontSize: 12.5 }}><span style={{ color: C.accent }}>Premium trigger — </span>{plan.premiumRule}</div>
+              <div style={{ color: C.textDim, fontSize: 14, marginBottom: 4 }}><span style={{ color: C.accent }}>Price trigger — </span>{plan.priceRule}</div>
+              <div style={{ color: C.textDim, fontSize: 14 }}><span style={{ color: C.accent }}>Premium trigger — </span>{plan.premiumRule}</div>
             </div>
           );
         })}
@@ -733,8 +771,8 @@ function StopLossPlaybook({ trades }) {
       <div className="flex flex-col gap-2">
         {STOP_LOSS_STEPS.map((step, i) => (
           <div key={i} className="flex gap-2.5 items-start">
-            <div style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, width: 16, flexShrink: 0 }}>{i + 1}.</div>
-            <div style={{ color: C.text, fontSize: 12.5, lineHeight: 1.5 }}>{step}</div>
+            <div style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, width: 18, flexShrink: 0 }}>{i + 1}.</div>
+            <div style={{ color: C.text, fontSize: 14, lineHeight: 1.5 }}>{step}</div>
           </div>
         ))}
       </div>
@@ -742,6 +780,7 @@ function StopLossPlaybook({ trades }) {
   );
 }
 function ManagementPanel({ management }) {
+  const C = useContext(ThemeContext);
   if (!management) return null;
   const rows = [
     ['Take profit at', management.takeProfitPct != null ? `${management.takeProfitPct}% of max` : null],
@@ -756,7 +795,7 @@ function ManagementPanel({ management }) {
       <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-3">Management plan</div>
       <div className="flex flex-col gap-2">
         {rows.map(([k, v]) => (
-          <div key={k} className="flex justify-between gap-3" style={{ fontSize: 12.5 }}>
+          <div key={k} className="flex justify-between gap-3" style={{ fontSize: 14.5 }}>
             <span style={{ color: C.textFaint }}>{k}</span>
             <span style={{ color: C.text, textAlign: 'right' }}>{v}</span>
           </div>
@@ -766,13 +805,14 @@ function ManagementPanel({ management }) {
   );
 }
 function ListPanel({ title, items, color, icon }) {
+  const C = useContext(ThemeContext);
   if (!items || !items.length) return null;
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
       <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-2.5">{title}</div>
       <div className="flex flex-col gap-2">
         {items.map((it, i) => (
-          <div key={i} className="flex gap-2 items-start" style={{ fontSize: 12.5 }}>
+          <div key={i} className="flex gap-2 items-start" style={{ fontSize: 14.5 }}>
             <span style={{ color, flexShrink: 0 }}>{icon}</span>
             <span style={{ color: C.text }}>{it}</span>
           </div>
@@ -782,6 +822,7 @@ function ListPanel({ title, items, color, icon }) {
   );
 }
 function RiskLists({ wrong, verify, gaps }) {
+  const C = useContext(ThemeContext);
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -822,6 +863,8 @@ function downscaleImage(file, maxDim = 1280, quality = 0.82) {
 }
 
 function AnalyzeInput({ ticker, setTicker, image, setImage, onSubmit, canSubmit }) {
+  const C = useContext(ThemeContext);
+  const inputStyle = getInputStyle(C);
   const fileRef = useRef(null);
   const [imgErr, setImgErr] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -864,6 +907,7 @@ function AnalyzeInput({ ticker, setTicker, image, setImage, onSubmit, canSubmit 
 }
 const LOADING_MESSAGES = ['Reading price structure…', 'Pulling live price and range…', 'Checking earnings and news…', 'Scoring conviction…', 'Building trade structures…'];
 function LoadingState() {
+  const C = useContext(ThemeContext);
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % LOADING_MESSAGES.length), 1600);
@@ -877,6 +921,7 @@ function LoadingState() {
   );
 }
 function ErrorState({ error, raw, onRetry }) {
+  const C = useContext(ThemeContext);
   const [showRaw, setShowRaw] = useState(true);
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.negative}` }} className="rounded-lg p-5">
@@ -884,7 +929,7 @@ function ErrorState({ error, raw, onRetry }) {
         <AlertTriangle size={16} color={C.negative} />
         <div style={{ color: C.text, fontFamily: "'Space Grotesk', sans-serif" }} className="font-semibold">Analysis didn't come back clean</div>
       </div>
-      <div style={{ color: C.textDim, fontSize: 13 }} className="mb-3">{error}</div>
+      <div style={{ color: C.textDim, fontSize: 15 }} className="mb-3">{error}</div>
       {raw && <button onClick={() => setShowRaw(!showRaw)} style={{ color: C.accent }} className="text-xs mb-2">{showRaw ? 'Hide' : 'Show'} raw response</button>}
       {showRaw && <pre style={{ background: C.panelAlt, color: C.textDim, fontSize: 11, padding: 10, borderRadius: 6, overflowX: 'auto', maxHeight: 200 }}>{raw}</pre>}
       <button onClick={onRetry} style={{ background: C.accent, color: '#14171C' }} className="px-4 py-2 rounded-md text-sm font-medium mt-2">Try again</button>
@@ -892,6 +937,7 @@ function ErrorState({ error, raw, onRetry }) {
   );
 }
 function AnalysisResult({ result, onLogTrade, loggedKeys, onNewAnalysis }) {
+  const C = useContext(ThemeContext);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
@@ -901,7 +947,7 @@ function AnalysisResult({ result, onLogTrade, loggedKeys, onNewAnalysis }) {
             {result.price != null && <div style={{ color: C.accent, fontFamily: "'IBM Plex Mono', monospace" }} className="text-lg">${result.price}</div>}
             <div style={{ color: C.textFaint, fontSize: 12 }}>{result.timeframe} · {result.asOf}</div>
           </div>
-          <div style={{ color: C.textDim, fontSize: 14 }} className="mt-1">{result.oneLinerRead}</div>
+          <div style={{ color: C.textDim, fontSize: 16 }} className="mt-1">{result.oneLinerRead}</div>
         </div>
         <button onClick={onNewAnalysis} style={{ color: C.textDim, border: `1px solid ${C.border}` }} className="text-xs px-3 py-1.5 rounded-md whitespace-nowrap flex items-center gap-1.5 flex-shrink-0"><ArrowLeft size={13} /> New</button>
       </div>
@@ -914,7 +960,7 @@ function AnalysisResult({ result, onLogTrade, loggedKeys, onNewAnalysis }) {
       {result.backAnalysis && (
         <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="rounded-lg p-4">
           <div style={{ color: C.textDim, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5 }} className="uppercase mb-2">Back-analysis</div>
-          <div style={{ color: C.text, fontSize: 13.5, lineHeight: 1.6 }}>{result.backAnalysis}</div>
+          <div style={{ color: C.text, fontSize: 15.5, lineHeight: 1.6 }}>{result.backAnalysis}</div>
         </div>
       )}
 
@@ -926,9 +972,9 @@ function AnalysisResult({ result, onLogTrade, loggedKeys, onNewAnalysis }) {
               Earnings {result.catalysts.earningsInWindow ? 'inside window' : 'clear'}
             </span>
           </div>
-          <div style={{ color: C.textDim, fontSize: 12.5 }} className="mb-1.5">Next earnings: {result.catalysts.earningsDate || 'unconfirmed'}</div>
-          {result.catalysts.news && <div style={{ color: C.text, fontSize: 13 }} className="mb-1.5">{result.catalysts.news}</div>}
-          {result.catalysts.impact && <div style={{ color: C.accent, fontSize: 12.5 }}>{result.catalysts.impact}</div>}
+          <div style={{ color: C.textDim, fontSize: 14.5 }} className="mb-1.5">Next earnings: {result.catalysts.earningsDate || 'unconfirmed'}</div>
+          {result.catalysts.news && <div style={{ color: C.text, fontSize: 15 }} className="mb-1.5">{result.catalysts.news}</div>}
+          {result.catalysts.impact && <div style={{ color: C.accent, fontSize: 14.5 }}>{result.catalysts.impact}</div>}
         </div>
       )}
 
@@ -1025,6 +1071,7 @@ function AnalyzeView({ onAddTrade }) {
 }
 
 function JournalView({ trades, onAddTrade, onCloseTrade, onDeleteTrade }) {
+  const C = useContext(ThemeContext);
   const [showAdd, setShowAdd] = useState(false);
   const [closingTrade, setClosingTrade] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -1092,18 +1139,29 @@ function JournalView({ trades, onAddTrade, onCloseTrade, onDeleteTrade }) {
   );
 }
 
-function Header({ tab, setTab, openCount }) {
+function Header({ tab, setTab, openCount, theme, toggleTheme }) {
+  const C = useContext(ThemeContext);
   return (
     <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
       <div>
         <div style={{ color: C.textFaint, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2 }} className="uppercase">The Options Architect</div>
         <div style={{ color: C.text, fontFamily: "'Space Grotesk', sans-serif" }} className="text-2xl font-semibold">Desk & Journal</div>
       </div>
-      <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="flex rounded-lg p-1 gap-1">
-        <button onClick={() => setTab('analyze')} style={{ background: tab === 'analyze' ? C.accentSoft : 'transparent', color: tab === 'analyze' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">Analyze</button>
-        <button onClick={() => setTab('journal')} style={{ background: tab === 'journal' ? C.accentSoft : 'transparent', color: tab === 'journal' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">
-          Journal{openCount > 0 && <span style={{ background: C.accent, color: '#14171C' }} className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full">{openCount}</span>}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle light and dark mode"
+          style={{ background: C.panel, border: `1px solid ${C.border}`, color: C.textDim }}
+          className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0"
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
+        <div style={{ background: C.panel, border: `1px solid ${C.border}` }} className="flex rounded-lg p-1 gap-1">
+          <button onClick={() => setTab('analyze')} style={{ background: tab === 'analyze' ? C.accentSoft : 'transparent', color: tab === 'analyze' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">Analyze</button>
+          <button onClick={() => setTab('journal')} style={{ background: tab === 'journal' ? C.accentSoft : 'transparent', color: tab === 'journal' ? C.accent : C.textDim }} className="px-3.5 py-1.5 rounded-md text-sm font-medium">
+            Journal{openCount > 0 && <span style={{ background: C.accent, color: '#14171C' }} className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full">{openCount}</span>}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1113,6 +1171,17 @@ export default function OptionsArchitectApp() {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('analyze');
+  const [theme, setTheme] = useState(() => {
+    try { return window.localStorage.getItem('oa-theme') === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; }
+  });
+  const C = theme === 'dark' ? DARK : LIGHT;
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try { window.localStorage.setItem('oa-theme', next); } catch (e) {}
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     loadTrades().then((t) => { setTrades(t); setLoading(false); });
@@ -1141,26 +1210,28 @@ export default function OptionsArchitectApp() {
   }, []);
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', fontFamily: "'Inter', sans-serif" }} className="p-3 sm:p-6">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        .oa-slider { -webkit-appearance: none; height: 4px; border-radius: 2px; background: ${C.borderLight}; }
-        .oa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${C.accent}; cursor: pointer; }
-        .oa-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: ${C.accent}; border: none; cursor: pointer; }
-        ::placeholder { color: ${C.textFaint}; }
-      `}</style>
-      <div className="max-w-5xl mx-auto">
-        <Header tab={tab} setTab={setTab} openCount={trades.filter((t) => t.status === 'open').length} />
-        {loading ? (
-          <div style={{ color: C.textFaint }} className="py-16 text-center text-sm">Loading…</div>
-        ) : tab === 'analyze' ? (
-          <AnalyzeView onAddTrade={addTrade} />
-        ) : (
-          <JournalView trades={trades} onAddTrade={addTrade} onCloseTrade={closeTrade} onDeleteTrade={deleteTrade} />
-        )}
+    <ThemeContext.Provider value={C}>
+      <div style={{ background: C.bg, minHeight: '100vh', fontFamily: "'Inter', sans-serif" }} className="p-3 sm:p-6">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+          * { box-sizing: border-box; }
+          .oa-slider { -webkit-appearance: none; height: 4px; border-radius: 2px; background: ${C.borderLight}; }
+          .oa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${C.accent}; cursor: pointer; }
+          .oa-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: ${C.accent}; border: none; cursor: pointer; }
+          ::placeholder { color: ${C.textFaint}; }
+        `}</style>
+        <div className="max-w-5xl mx-auto">
+          <Header tab={tab} setTab={setTab} openCount={trades.filter((t) => t.status === 'open').length} theme={theme} toggleTheme={toggleTheme} />
+          {loading ? (
+            <div style={{ color: C.textFaint }} className="py-16 text-center text-sm">Loading…</div>
+          ) : tab === 'analyze' ? (
+            <AnalyzeView onAddTrade={addTrade} />
+          ) : (
+            <JournalView trades={trades} onAddTrade={addTrade} onCloseTrade={closeTrade} onDeleteTrade={deleteTrade} />
+          )}
+        </div>
       </div>
-    </div>
+    </ThemeContext.Provider>
   );
 }
 
