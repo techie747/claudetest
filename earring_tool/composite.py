@@ -39,8 +39,10 @@ def _union_crop(image_bgr, pieces, padding_px):
 def _add_shadow_and_pad(bgra, cfg):
     canvas = cfg.canvas_size
     scale = canvas / max(bgra.shape[0], bgra.shape[1], 1)
-    # Leave headroom so the subject + shadow fit inside the canvas with margin.
-    fit_scale = min(scale, (canvas * 0.86) / max(bgra.shape[0], bgra.shape[1], 1))
+    # Leave generous headroom so the subject sits well inside the canvas
+    # with substantial white space around it, as expected for e-commerce
+    # product photos (not edge-to-edge).
+    fit_scale = min(scale, (canvas * 0.62) / max(bgra.shape[0], bgra.shape[1], 1))
     new_w = max(1, int(bgra.shape[1] * fit_scale))
     new_h = max(1, int(bgra.shape[0] * fit_scale))
     resized = cv2.resize(bgra, (new_w, new_h), interpolation=cv2.INTER_AREA)

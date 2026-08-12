@@ -49,9 +49,51 @@ def rembg_refine_mask(image_bgr, piece, margin_frac=0.35):
         if best_i is not None:
             crop_alpha = np.where(labels == best_i, crop_alpha, 0).astype(np.uint8)
 
+    crop_alpha = _punch_background_holes(crop_alpha, piece["mask"][y0:y1, x0:x1])
+
     full_mask = np.zeros((H, W), dtype=np.uint8)
     full_mask[y0:y1, x0:x1] = crop_alpha
     return full_mask
+
+
+def _punch_background_holes(alpha, coarse_mask, min_hole_frac=0.01, max_hole_frac=0.6):
+    """rembg's saliency model often fails to recognize an earring's interior
+    cutout (e.g. a swirl/hoop shape) as background at all -- its raw alpha
+    comes back fully solid over the whole silhouette, mesh backdrop and all,
+    rather than punched through.
+
+    detect.py's own coarse saturation-based mask (computed at its working
+    resolution, before this per-piece rembg pass) already gets this right:
+    it correctly reads the mesh visible through a hole as background, so
+    that mask's silhouette is a ring/donut shape, not a solid disc. Trying
+    to *recompute* that same signal here on the noisier full-resolution
+    crop breaks it (fine texture noise fragments the hole's boundary so it
+    never closes into a proper enclosed contour), and a plain color-
+    similarity heuristic is worse still -- it also matches a piece's own
+    ordinary light/dark patina patches and eats into the piece itself
+    (tried both; both regressed real pieces). So just reuse the existing
+    coarse mask's holes directly via contour hierarchy instead."""
+    fg = alpha > 128
+    if not fg.any():
+        return alpha
+
+    contours, hierarchy = cv2.findContours(coarse_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hierarchy is None:
+        return alpha
+    hierarchy = hierarchy[0]
+
+    piece_area = int(fg.sum())
+    result = alpha.copy()
+    for i, c in enumerate(contours):
+        if hierarchy[i][3] == -1:
+            continue  # outer contour, not a hole
+        area = cv2.contourArea(c)
+        if area < piece_area * min_hole_frac or area > piece_area * max_hole_frac:
+            continue
+        hole_mask = np.zeros(alpha.shape, dtype=np.uint8)
+        cv2.drawContours(hole_mask, [c], -1, 255, thickness=cv2.FILLED)
+        result[hole_mask > 0] = 0
+    return result
 
 
 def trim_hook(mask, thin_frac=0.22, max_trim_frac=0.35):
