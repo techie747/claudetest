@@ -18,11 +18,23 @@ from skimage.feature import peak_local_max
 from skimage.segmentation import watershed
 
 
+def _odd_kernel_size(image_shape, frac):
+    """Kernel size as a fraction of the image diagonal, so morphology
+    behaves the same regardless of the working resolution detection runs
+    at (fixed pixel sizes tuned at full-res become oversized -- and start
+    merging separate earrings together -- once the image is downscaled)."""
+    h, w = image_shape[:2]
+    diag = (h ** 2 + w ** 2) ** 0.5
+    size = max(3, int(round(diag * frac)))
+    return size + 1 if size % 2 == 0 else size
+
+
 def _saturation_mask(image_bgr, sat_thresh=55):
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
     s = hsv[:, :, 1]
     _, mask = cv2.threshold(s, sat_thresh, 255, cv2.THRESH_BINARY)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    k = _odd_kernel_size(image_bgr.shape, 0.00126)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
     return mask
@@ -48,7 +60,8 @@ def find_display_interior(image_bgr):
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
     H, S, V = cv2.split(hsv)
     wood = ((H > 5) & (H < 30) & (S > 25) & (S < 160) & (V > 60) & (V < 230)).astype(np.uint8) * 255
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25))
+    k = _odd_kernel_size(image_bgr.shape, 0.0035)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
     wood = cv2.morphologyEx(wood, cv2.MORPH_CLOSE, kernel, iterations=3)
     wood = cv2.morphologyEx(wood, cv2.MORPH_OPEN, kernel, iterations=1)
 
@@ -105,15 +118,34 @@ def _split_blob(submask, typical_area):
     return watershed(-dist, markers, mask=submask > 0)
 
 
-def _add_piece(pieces, region, w, h, min_area, max_area):
+def _valid_piece_geometry(region, min_area, max_area):
+    """Reject candidates that don't look like a solid earring silhouette:
+    hook/wire hardware (extreme aspect ratio slivers) or a scattered/noisy
+    mask from an over-eager split (very low fill fraction of its own
+    bounding box). Returns (x, y, bw, bh, area) or None."""
     area = int((region > 0).sum())
     if area < min_area * 0.5 or area > max_area:
-        return
+        return None
     ys, xs = np.where(region > 0)
     x, y = int(xs.min()), int(ys.min())
     bw, bh = int(xs.max() - x + 1), int(ys.max() - y + 1)
+    aspect = bw / bh if bh else 0
+    if aspect > 6 or aspect < 1 / 6:
+        return None
+    extent = area / (bw * bh)
+    if extent < 0.2:
+        return None
+    return x, y, bw, bh, area
+
+
+def _add_piece(pieces, region, w, h, min_area, max_area):
+    geom = _valid_piece_geometry(region, min_area, max_area)
+    if geom is None:
+        return
+    x, y, bw, bh, area = geom
     if _is_frame_blob({cv2.CC_STAT_WIDTH: bw, cv2.CC_STAT_HEIGHT: bh}, w, h):
         return
+    ys, xs = np.where(region > 0)
     pieces.append({
         "bbox": (x, y, bw, bh),
         "mask": region,
@@ -122,16 +154,35 @@ def _add_piece(pieces, region, w, h, min_area, max_area):
     })
 
 
+_DETECT_MAX_DIM = 1400  # working resolution for mask/watershed; upscaled back after
+
+
 def detect_pieces(image_bgr, cfg):
-    """Return list of dicts: {bbox:(x,y,w,h), mask (full-image uint8), area}."""
-    h, w = image_bgr.shape[:2]
+    """Return list of dicts: {bbox:(x,y,w,h), mask (full-image uint8), area}.
+
+    Detection (saturation mask, frame-hole finding, watershed splitting) runs
+    on a downscaled copy for speed -- full-resolution watershed on a 24MP
+    photo is prohibitively slow and buys no real accuracy, since earring
+    silhouettes are still cleanly resolved well under 1400px. Bounding boxes
+    are scaled back up to full resolution afterward; the precise alpha matte
+    for each box comes from a per-crop rembg pass in segment.py, not from
+    this coarse mask.
+    """
+    full_h, full_w = image_bgr.shape[:2]
+    scale = min(1.0, _DETECT_MAX_DIM / max(full_h, full_w))
+    if scale < 1.0:
+        small = cv2.resize(image_bgr, (int(full_w * scale), int(full_h * scale)), interpolation=cv2.INTER_AREA)
+    else:
+        small = image_bgr
+
+    h, w = small.shape[:2]
     img_area = h * w
     min_area = cfg.min_piece_area_frac * img_area
     max_area = cfg.max_piece_area_frac * img_area
 
-    mask = _saturation_mask(image_bgr)
+    mask = _saturation_mask(small)
 
-    interior = find_display_interior(image_bgr)
+    interior = find_display_interior(small)
     if interior is not None:
         ix, iy, iw, ih = interior
         roi = np.zeros_like(mask)
@@ -164,9 +215,44 @@ def detect_pieces(image_bgr, cfg):
                 _add_piece(pieces, region, w, h, min_area, max_area)
             continue
 
-        for j in range(1, split.max() + 1):
-            sub_region = np.where(split == j, 255, 0).astype(np.uint8)
-            _add_piece(pieces, sub_region, w, h, min_area, max_area)
+        sub_regions = [
+            np.where(split == j, 255, 0).astype(np.uint8) for j in range(1, split.max() + 1)
+        ]
+        sub_areas = [int((r > 0).sum()) for r in sub_regions]
+        # A complex single-piece silhouette (e.g. a swirl/hoop with a hole)
+        # can still trigger 2+ distance-transform peaks. Genuine touching
+        # pairs split into roughly similarly-sized halves; a spurious split
+        # instead produces one dominant part plus small fragments. Fall back
+        # to the whole original blob in that case rather than exporting a
+        # fragment as its own "piece".
+        largest = max(sub_areas) if sub_areas else 0
+        balanced = largest > 0 and all(a >= largest * 0.4 for a in sub_areas if a >= min_area * 0.5)
+        if balanced:
+            for sub_region in sub_regions:
+                _add_piece(pieces, sub_region, w, h, min_area, max_area)
+        elif area <= max_area and not _is_frame_blob(stats[i], w, h):
+            _add_piece(pieces, region, w, h, min_area, max_area)
+
+    if scale < 1.0:
+        pieces = _rescale_pieces(pieces, scale, full_w, full_h)
 
     pieces.sort(key=lambda p: p["bbox"][0])
     return pieces
+
+
+def _rescale_pieces(pieces, scale, full_w, full_h):
+    rescaled = []
+    for p in pieces:
+        full_mask = cv2.resize(p["mask"], (full_w, full_h), interpolation=cv2.INTER_NEAREST)
+        ys, xs = np.where(full_mask > 0)
+        if len(ys) == 0:
+            continue
+        x, y = int(xs.min()), int(ys.min())
+        bw, bh = int(xs.max() - x + 1), int(ys.max() - y + 1)
+        rescaled.append({
+            "bbox": (x, y, bw, bh),
+            "mask": full_mask,
+            "area": int(len(ys)),
+            "centroid": (float(xs.mean()), float(ys.mean())),
+        })
+    return rescaled
