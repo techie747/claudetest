@@ -1,7 +1,57 @@
-"""Step 2 (refine): per-piece mask cleanup, hook/wire trimming, edge feathering."""
+"""Step 2 (refine): per-piece rembg matting, hook/wire trimming, edge feathering."""
 
 import numpy as np
 import cv2
+from rembg import remove, new_session
+
+_SESSION = None
+
+
+def _session():
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = new_session("u2net")
+    return _SESSION
+
+
+def rembg_refine_mask(image_bgr, piece, margin_frac=0.35):
+    """Run rembg on a tight crop around the piece to get a precise per-piece
+    alpha matte (far more reliable at this scale/isolation than a whole-image
+    pass), then paste the result back into a full-image-sized mask."""
+    x, y, w, h = piece["bbox"]
+    H, W = image_bgr.shape[:2]
+    m = int(max(w, h) * margin_frac)
+    x0, y0 = max(0, x - m), max(0, y - m)
+    x1, y1 = min(W, x + w + m), min(H, y + h + m)
+    crop = image_bgr[y0:y1, x0:x1]
+
+    rgba = remove(crop, session=_session())
+    if rgba.shape[2] == 4:
+        crop_alpha = rgba[:, :, 3]
+    else:
+        gray = cv2.cvtColor(rgba, cv2.COLOR_BGR2GRAY)
+        _, crop_alpha = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+
+    # Keep only the component nearest the crop center (the target piece),
+    # in case rembg picks up a neighboring earring inside the margin.
+    _, bin_mask = cv2.threshold(crop_alpha, 40, 255, cv2.THRESH_BINARY)
+    n, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_mask, connectivity=8)
+    if n > 2:
+        ch, cw = crop.shape[:2]
+        center = np.array([cw / 2, ch / 2])
+        best_i, best_d = None, None
+        for i in range(1, n):
+            if stats[i, cv2.CC_STAT_AREA] < 20:
+                continue
+            d = np.linalg.norm(centroids[i] - center)
+            if best_d is None or d < best_d:
+                best_d, best_i = d, i
+        if best_i is not None:
+            crop_alpha = np.where(labels == best_i, crop_alpha, 0).astype(np.uint8)
+
+    full_mask = np.zeros((H, W), dtype=np.uint8)
+    full_mask[y0:y1, x0:x1] = crop_alpha
+    return full_mask
 
 
 def trim_hook(mask, thin_frac=0.22, max_trim_frac=0.35):
@@ -50,8 +100,11 @@ def feather_alpha(mask, erode_px=2, feather_px=3):
     return np.clip(alpha, 0, 255).astype(np.uint8)
 
 
-def refine_piece(piece, cfg):
-    mask = piece["mask"]
+def refine_piece(image_bgr, piece, cfg):
+    mask = rembg_refine_mask(image_bgr, piece)
+    if mask.max() == 0:
+        # rembg found nothing in the crop; fall back to the coarse detector mask
+        mask = piece["mask"]
     if not cfg.keep_hook:
         mask = trim_hook(mask)
     alpha = feather_alpha(mask, cfg.alpha_matte_erode_px, cfg.alpha_matte_feather_px)

@@ -50,7 +50,7 @@ def process_image(path, cfg, args, manifest_rows, review_rows):
     print("  Refining masks (hook trim + edge feather)...")
     pieces = []
     for p in raw_pieces:
-        r = segment.refine_piece(p, cfg)
+        r = segment.refine_piece(image_bgr, p, cfg)
         if r is not None:
             pieces.append(r)
 
