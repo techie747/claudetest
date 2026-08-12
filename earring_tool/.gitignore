@@ -1,0 +1,7 @@
+output/
+input/*.jpg
+input/*.jpeg
+input/*.png
+!input/.gitkeep
+__pycache__/
+*.pyc

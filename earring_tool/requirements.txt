@@ -1,0 +1,7 @@
+opencv-python-headless>=4.9
+numpy>=1.26
+Pillow>=10.0
+scipy>=1.11
+scikit-image>=0.22
+rembg>=2.0.55
+onnxruntime>=1.17
