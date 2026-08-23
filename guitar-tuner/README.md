@@ -24,10 +24,15 @@ live frequency spectrum and waveform.
   AudioContext is properly resumed (awaited) before scheduling, which
   matters on iOS Safari where a freshly created context stays
   suspended until that promise settles
-- When any string on any instrument locks into tune, a full-screen
-  colorful particle burst + expanding rainbow rings fire, the spectrum
-  visualizer shifts into a rotating rainbow, the dial glows, and the
-  device vibrates (where supported)
+- When any string on any instrument holds steady in tune for a full
+  second, a full-screen colorful particle burst + expanding rainbow
+  rings fire, the spectrum visualizer shifts into a rotating rainbow,
+  the dial glows, and the device vibrates (where supported). A brief
+  in-tune blip doesn't celebrate — the reading has to genuinely settle,
+  not just flash through 0¢ on its way past. A short (150ms) grace
+  window tolerates single noisy detector frames without resetting the
+  hold, since pitch detection naturally jitters a few cents frame to
+  frame even on a rock-steady note
 - No build step, no dependencies — plain HTML/CSS/JS, works great on phones
 
 ## Running it

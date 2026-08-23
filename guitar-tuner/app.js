@@ -270,7 +270,9 @@
     dialWrapEl.classList.remove('tuned');
     particles = [];
     rings = [];
-    wasInTune = false;
+    inTuneSince = null;
+    outOfTuneSince = null;
+    celebratedThisStreak = false;
     clearCanvas(celebrationCanvas);
   }
 
@@ -406,8 +408,15 @@
 
   let particles = [];
   let rings = [];
-  let wasInTune = false;
-  let lastCelebrationAt = -Infinity;
+  let inTuneSince = null;
+  let outOfTuneSince = null;
+  let celebratedThisStreak = false;
+  const STEADY_IN_TUNE_MS = 1000;
+  // Pitch detection jitters by a few cents frame to frame even on a rock
+  // steady note, so a single noisy frame shouldn't throw away an otherwise
+  // solid hold — only reset the streak once it's genuinely been out of
+  // tune for a beat, not just one bad reading.
+  const OUT_OF_TUNE_GRACE_MS = 150;
   let rainbowPhase = 0;
 
   function spawnCelebration() {
@@ -659,19 +668,33 @@
 
       statusEl.textContent = inTune ? 'In tune!' : (flat ? 'Tune up (too low)' : 'Tune down (too high)');
 
-      if (inTune && !wasInTune && (performance.now() - lastCelebrationAt) > 1200) {
-        spawnCelebration();
-        lastCelebrationAt = performance.now();
+      if (inTune) {
+        const now = performance.now();
+        outOfTuneSince = null;
+        if (inTuneSince === null) inTuneSince = now;
+        if (!celebratedThisStreak && (now - inTuneSince) >= STEADY_IN_TUNE_MS) {
+          spawnCelebration();
+          celebratedThisStreak = true;
+        }
+      } else if (inTuneSince !== null) {
+        const now = performance.now();
+        if (outOfTuneSince === null) outOfTuneSince = now;
+        if (now - outOfTuneSince > OUT_OF_TUNE_GRACE_MS) {
+          inTuneSince = null;
+          outOfTuneSince = null;
+          celebratedThisStreak = false;
+        }
       }
-      wasInTune = inTune;
     } else {
       silenceFrames++;
       if (silenceFrames > 30) {
         noteDisplayEl.classList.remove('in-tune', 'flat', 'sharp');
         centsEl.classList.remove('in-tune', 'flat', 'sharp');
         dialWrapEl.classList.remove('tuned');
+        inTuneSince = null;
+        outOfTuneSince = null;
+        celebratedThisStreak = false;
       }
-      wasInTune = false;
     }
 
     drawSpectrum(inTune);
